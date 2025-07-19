@@ -14,6 +14,7 @@ Ce projet utilise un ensemble de règles organisées pour les Server Actions Nex
 
 ### Développement
 - [Server Actions](mdc:nextjs-server-actions.mdc) - Déclaration, validation, gestion des erreurs, types TypeScript
+- [Modals & Parallel Routes](mdc:nextjs-modals-parallel-routes.mdc) - Intercepting routes, parallel routes, modals Next.js
 - [Sécurité et Authentification](mdc:security-auth.mdc) - Authentification obligatoire, autorisations, protection des données
 - [Intégration Formulaires](mdc:forms-integration.mdc) - useFormState, useOptimistic, useActionState, validation côté client
 

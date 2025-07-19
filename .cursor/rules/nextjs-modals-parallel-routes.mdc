@@ -1,0 +1,713 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Next.js Modals avec Parallel Routes et Intercepting Routes
+
+## Architecture des Parallel Routes
+
+### Structure de dossiers recommandée
+Organiser les parallel routes pour les modals dans l'App Router :
+
+```
+src/app/
+├── @modal/                    # Slot modal parallèle
+│   ├── (..)photos/           # Intercepting route
+│   │   └── [id]/
+│   │       └── page.tsx      # Modal photo
+│   ├── (..)posts/            # Intercepting route
+│   │   └── [slug]/
+│   │       └── page.tsx      # Modal post
+│   └── default.tsx           # Fallback pour le slot modal
+├── photos/
+│   └── [id]/
+│       └── page.tsx          # Page complète photo
+├── posts/
+│   └── [slug]/
+│       └── page.tsx          # Page complète post
+├── layout.tsx                # Layout avec slot modal
+└── page.tsx                  # Page d'accueil
+```
+
+### Layout principal avec slot modal
+Configurer le layout pour accepter le slot modal parallèle :
+
+```typescript
+// src/app/layout.tsx
+import { Inter } from 'next/font/google'
+import { ThemeProvider } from '@/features/theme/provider/theme-provider'
+import './globals.css'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export default function RootLayout({
+  children,
+  modal, // Slot modal parallèle
+}: {
+  children: React.ReactNode
+  modal: React.ReactNode
+}) {
+  return (
+    <html lang="fr" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          {modal} {/* Rendu du modal parallèle */}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+## Intercepting Routes pour Modals
+
+### Configuration des intercepting routes
+Utiliser la convention `(..)` pour intercepter les routes :
+
+```typescript
+// src/app/@modal/(..)photos/[id]/page.tsx
+import { Modal } from '@/features/photos/components/modal'
+import { PhotoModal } from '@/features/photos/components/photo-modal'
+import { getPhoto } from '@/features/photos/actions/get-photo'
+
+interface PhotoModalPageProps {
+  params: {
+    id: string
+  }
+}
+
+export default async function PhotoModalPage({ params }: PhotoModalPageProps) {
+  const photo = await getPhoto(params.id)
+
+  if (!photo) {
+    return (
+      <Modal>
+        <div className="p-6 text-center">
+          <h2 className="text-lg font-semibold">Photo non trouvée</h2>
+          <p className="text-muted-foreground">La photo demandée n'existe pas.</p>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal>
+      <PhotoModal photo={photo} />
+    </Modal>
+  )
+}
+```
+
+### Default.tsx pour le slot modal
+Créer un fallback pour le slot modal :
+
+```typescript
+// src/app/@modal/default.tsx
+export default function Default() {
+  return null // Aucun modal par défaut
+}
+```
+
+## Composants Modal Réutilisables
+
+### Composant Modal de base
+Créer un composant modal réutilisable avec Shadcn/ui :
+
+```typescript
+// src/features/ui/components/modal.tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+
+interface ModalProps {
+  children: React.ReactNode
+  className?: string
+}
+
+export function Modal({ children, className }: ModalProps) {
+  const router = useRouter()
+  const [open, setOpen] = useState(true)
+
+  // Fermer le modal et naviguer en arrière
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setOpen(false)
+      router.back()
+    }
+  }
+
+  // Gestion du bouton retour du navigateur
+  useEffect(() => {
+    const handlePopState = () => {
+      setOpen(false)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className={className}>
+        {children}
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+### Modal avec Header personnalisé
+Créer des modals avec structure cohérente :
+
+```typescript
+// src/features/ui/components/modal-with-header.tsx
+'use client'
+
+import { X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import {
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Modal } from './modal'
+
+interface ModalWithHeaderProps {
+  title: string
+  description?: string
+  children: React.ReactNode
+  className?: string
+}
+
+export function ModalWithHeader({
+  title,
+  description,
+  children,
+  className
+}: ModalWithHeaderProps) {
+  const router = useRouter()
+
+  return (
+    <Modal className={className}>
+      <DialogHeader className="flex flex-row items-center justify-between">
+        <div className="space-y-1">
+          <DialogTitle>{title}</DialogTitle>
+          {description && (
+            <DialogDescription>{description}</DialogDescription>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          className="h-6 w-6"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Fermer</span>
+        </Button>
+      </DialogHeader>
+      {children}
+    </Modal>
+  )
+}
+```
+
+## Patterns d'Usage par Feature
+
+### Modal pour photos
+Créer un modal spécialisé pour les photos :
+
+```typescript
+// src/features/photos/components/photo-modal.tsx
+import Image from 'next/image'
+import { Download, Share2, Heart } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ModalWithHeader } from '@/features/ui/components/modal-with-header'
+import { Badge } from '@/components/ui/badge'
+
+interface Photo {
+  id: string
+  title: string
+  url: string
+  alt: string
+  width: number
+  height: number
+  tags: string[]
+  author: {
+    name: string
+    avatar: string
+  }
+}
+
+interface PhotoModalProps {
+  photo: Photo
+}
+
+export function PhotoModal({ photo }: PhotoModalProps) {
+  return (
+    <ModalWithHeader
+      title={photo.title}
+      description={`Par ${photo.author.name}`}
+      className="max-w-4xl"
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="relative aspect-square overflow-hidden rounded-lg">
+          <Image
+            src={photo.url}
+            alt={photo.alt}
+            width={photo.width}
+            height={photo.height}
+            className="object-cover w-full h-full"
+          />
+        </div>
+        
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {photo.tags.map((tag) => (
+              <Badge key={tag} variant="secondary">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Heart className="mr-2 h-4 w-4" />
+              Aimer
+            </Button>
+            <Button variant="outline" size="sm">
+              <Share2 className="mr-2 h-4 w-4" />
+              Partager
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Télécharger
+            </Button>
+          </div>
+        </div>
+      </div>
+    </ModalWithHeader>
+  )
+}
+```
+
+### Modal pour formulaires
+Créer des modals pour les formulaires avec Server Actions :
+
+```typescript
+// src/features/posts/components/create-post-modal.tsx
+'use client'
+
+import { useFormState } from 'react-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { ModalWithHeader } from '@/features/ui/components/modal-with-header'
+import { createPost } from '@/features/posts/actions/create'
+
+const initialState = {
+  errors: {},
+  message: ''
+}
+
+export function CreatePostModal() {
+  const [state, formAction] = useFormState(createPost, initialState)
+
+  return (
+    <ModalWithHeader
+      title="Créer un nouveau post"
+      description="Partagez vos idées avec la communauté"
+      className="max-w-md"
+    >
+      <form action={formAction} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="title">Titre</Label>
+          <Input
+            id="title"
+            name="title"
+            placeholder="Titre de votre post"
+            aria-invalid={state.errors?.title ? 'true' : 'false'}
+          />
+          {state.errors?.title && (
+            <p className="text-sm text-destructive">
+              {state.errors.title[0]}
+            </p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="content">Contenu</Label>
+          <Textarea
+            id="content"
+            name="content"
+            placeholder="Écrivez votre contenu ici..."
+            rows={4}
+            aria-invalid={state.errors?.content ? 'true' : 'false'}
+          />
+          {state.errors?.content && (
+            <p className="text-sm text-destructive">
+              {state.errors.content[0]}
+            </p>
+          )}
+        </div>
+        
+        {state.message && (
+          <p className={`text-sm ${state.errors ? 'text-destructive' : 'text-green-600'}`}>
+            {state.message}
+          </p>
+        )}
+        
+        <div className="flex justify-end gap-2">
+          <Button type="submit">
+            Publier
+          </Button>
+        </div>
+      </form>
+    </ModalWithHeader>
+  )
+}
+```
+
+## Navigation et Liens
+
+### Liens vers modals avec intercepting routes
+Utiliser Link pour ouvrir les modals avec navigation douce :
+
+```typescript
+// src/features/photos/components/photo-grid.tsx
+import Link from 'next/link'
+import Image from 'next/image'
+import { Card, CardContent } from '@/components/ui/card'
+
+interface Photo {
+  id: string
+  title: string
+  url: string
+  alt: string
+}
+
+interface PhotoGridProps {
+  photos: Photo[]
+}
+
+export function PhotoGrid({ photos }: PhotoGridProps) {
+  return (
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {photos.map((photo) => (
+        <Link
+          key={photo.id}
+          href={`/photos/${photo.id}`} // Route interceptée par le modal
+          className="group"
+        >
+          <Card className="overflow-hidden transition-transform group-hover:scale-105">
+            <CardContent className="p-0">
+              <div className="relative aspect-square">
+                <Image
+                  src={photo.url}
+                  alt={photo.alt}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="p-3">
+                <h3 className="font-medium text-sm truncate">
+                  {photo.title}
+                </h3>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  )
+}
+```
+
+### Boutons pour ouvrir modals
+Créer des boutons qui ouvrent des modals via navigation :
+
+```typescript
+// src/features/posts/components/create-post-button.tsx
+'use client'
+
+import { Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+
+export function CreatePostButton() {
+  const router = useRouter()
+
+  const handleClick = () => {
+    router.push('/posts/create') // Route interceptée par le modal
+  }
+
+  return (
+    <Button onClick={handleClick}>
+      <Plus className="mr-2 h-4 w-4" />
+      Nouveau post
+    </Button>
+  )
+}
+```
+
+## Gestion des URL et du state
+
+### Hook pour la gestion modal
+Créer un hook pour gérer l'état des modals :
+
+```typescript
+// src/features/ui/hooks/use-modal.ts
+'use client'
+
+import { useRouter, usePathname } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+
+export function useModal() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(true)
+
+  const close = useCallback(() => {
+    setIsOpen(false)
+    router.back()
+  }, [router])
+
+  const dismiss = useCallback(() => {
+    setIsOpen(false)
+    router.push('/', { scroll: false })
+  }, [router])
+
+  // Fermer sur Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        close()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [close])
+
+  return {
+    isOpen,
+    close,
+    dismiss,
+    pathname
+  }
+}
+```
+
+### Modal avec navigation programmée
+Utiliser le hook pour des modals complexes :
+
+```typescript
+// src/features/products/components/product-modal.tsx
+'use client'
+
+import { useModal } from '@/features/ui/hooks/use-modal'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { ProductDetails } from './product-details'
+
+interface ProductModalProps {
+  product: Product
+}
+
+export function ProductModal({ product }: ProductModalProps) {
+  const { isOpen, close } = useModal()
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <DialogContent className="max-w-2xl">
+        <ProductDetails 
+          product={product}
+          onAddToCart={() => {
+            // Ajouter au panier puis fermer le modal
+            addToCart(product.id)
+            close()
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+## Performance et Optimisation
+
+### Lazy loading des modals
+Optimiser le chargement des modals avec React.lazy :
+
+```typescript
+// src/features/ui/components/lazy-modal.tsx
+import { lazy, Suspense } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const LazyPhotoModal = lazy(() => 
+  import('@/features/photos/components/photo-modal').then(mod => ({
+    default: mod.PhotoModal
+  }))
+)
+
+interface LazyModalWrapperProps {
+  children: React.ReactNode
+}
+
+function ModalSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-3/4" />
+      <Skeleton className="h-64 w-full" />
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-20" />
+      </div>
+    </div>
+  )
+}
+
+export function LazyModalWrapper({ children }: LazyModalWrapperProps) {
+  return (
+    <Suspense fallback={<ModalSkeleton />}>
+      {children}
+    </Suspense>
+  )
+}
+```
+
+### Préchargement des données
+Optimiser le chargement des données avec Server Components :
+
+```typescript
+// src/app/@modal/(..)photos/[id]/page.tsx
+import { Suspense } from 'react'
+import { Modal } from '@/features/ui/components/modal'
+import { PhotoModal } from '@/features/photos/components/photo-modal'
+import { getPhoto } from '@/features/photos/actions/get-photo'
+import { Skeleton } from '@/components/ui/skeleton'
+
+async function PhotoModalContent({ id }: { id: string }) {
+  const photo = await getPhoto(id)
+  
+  if (!photo) {
+    throw new Error('Photo non trouvée')
+  }
+
+  return <PhotoModal photo={photo} />
+}
+
+export default function PhotoModalPage({ 
+  params 
+}: { 
+  params: { id: string } 
+}) {
+  return (
+    <Modal>
+      <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+        <PhotoModalContent id={params.id} />
+      </Suspense>
+    </Modal>
+  )
+}
+```
+
+## Bonnes Pratiques
+
+### Structure des routes cohérente
+Maintenir une cohérence entre routes normales et interceptées :
+
+```
+✅ BON
+/photos/[id]          -> Page complète
+/@modal/(..)photos/[id] -> Modal
+
+✅ BON  
+/posts/create         -> Page complète
+/@modal/(..)posts/create -> Modal
+
+❌ MAUVAIS
+/photos/[id]          -> Page complète
+/@modal/photo-[id]    -> Incohérent
+```
+
+### Gestion des erreurs dans les modals
+Gérer les erreurs gracieusement :
+
+```typescript
+// src/app/@modal/(..)photos/[id]/error.tsx
+'use client'
+
+import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Modal } from '@/features/ui/components/modal'
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
+  useEffect(() => {
+    console.error(error)
+  }, [error])
+
+  return (
+    <Modal>
+      <div className="p-6 text-center space-y-4">
+        <h2 className="text-lg font-semibold">Une erreur est survenue</h2>
+        <p className="text-muted-foreground">
+          Impossible de charger le contenu demandé.
+        </p>
+        <Button onClick={reset}>
+          Réessayer
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+```
+
+### SEO et métadonnées
+Gérer les métadonnées pour les modals :
+
+```typescript
+// src/app/@modal/(..)photos/[id]/page.tsx
+import type { Metadata } from 'next'
+import { getPhoto } from '@/features/photos/actions/get-photo'
+
+export async function generateMetadata({
+  params
+}: {
+  params: { id: string }
+}): Promise<Metadata> {
+  const photo = await getPhoto(params.id)
+
+  if (!photo) {
+    return {
+      title: 'Photo non trouvée'
+    }
+  }
+
+  return {
+    title: photo.title,
+    description: `Photo par ${photo.author.name}`,
+    openGraph: {
+      title: photo.title,
+      description: `Photo par ${photo.author.name}`,
+      images: [photo.url],
+    },
+  }
+}
+```

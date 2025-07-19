@@ -1,0 +1,108 @@
+-- Migration pour les paramètres système
+-- À exécuter dans l'éditeur SQL de Supabase
+
+-- 1. Créer la table system_settings si elle n'existe pas
+CREATE TABLE IF NOT EXISTS public.system_settings (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    key TEXT UNIQUE NOT NULL,
+    value JSONB NOT NULL,
+    updated_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Activer RLS
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+
+-- 3. Politique RLS : seuls les admins peuvent accéder aux paramètres
+CREATE POLICY "Only admins can access system settings" ON public.system_settings
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_profiles 
+    WHERE id = auth.uid() 
+    AND role IN ('admin', 'super_admin', 'moderator')
+    AND is_active = true
+  )
+);
+
+-- 4. Créer les paramètres par défaut s'ils n'existent pas
+INSERT INTO public.system_settings (key, value) VALUES
+  ('site_name', '"Mon Application"'),
+  ('site_description', '"Description de mon application"'),
+  ('allow_registration', 'true'),
+  ('require_email_verification', 'true'),
+  ('max_upload_size', '10'),
+  ('maintenance_mode', 'false'),
+  ('maintenance_message', '""')
+ON CONFLICT (key) DO NOTHING;
+
+-- 5. Créer la table activity_logs si elle n'existe pas (pour les logs d'audit)
+CREATE TABLE IF NOT EXISTS public.activity_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    resource_id TEXT,
+    metadata JSONB DEFAULT '{}',
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Activer RLS sur activity_logs
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- 7. Politique RLS pour activity_logs : seuls les admins peuvent voir les logs
+CREATE POLICY "Only admins can view activity logs" ON public.activity_logs
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.user_profiles 
+    WHERE id = auth.uid() 
+    AND role IN ('admin', 'super_admin', 'moderator')
+    AND is_active = true
+  )
+);
+
+-- 8. Seuls les admins peuvent insérer des logs
+CREATE POLICY "Only admins can insert activity logs" ON public.activity_logs
+FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.user_profiles 
+    WHERE id = auth.uid() 
+    AND role IN ('admin', 'super_admin', 'moderator')
+    AND is_active = true
+  )
+);
+
+-- 9. Créer un trigger pour mettre à jour updated_at sur system_settings
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_system_settings_updated_at
+  BEFORE UPDATE ON public.system_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 10. Créer des index pour optimiser les performances
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON public.system_settings(key);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON public.activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON public.activity_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON public.activity_logs(action);
+
+-- 11. Commentaires sur les tables pour documentation
+COMMENT ON TABLE public.system_settings IS 'Paramètres de configuration système de l''application';
+COMMENT ON TABLE public.activity_logs IS 'Logs d''audit des actions administratives';
+
+COMMENT ON COLUMN public.system_settings.key IS 'Clé unique du paramètre (ex: site_name, maintenance_mode)';
+COMMENT ON COLUMN public.system_settings.value IS 'Valeur du paramètre stockée en JSON';
+COMMENT ON COLUMN public.system_settings.updated_by IS 'ID de l''utilisateur ayant modifié le paramètre';
+
+COMMENT ON COLUMN public.activity_logs.action IS 'Type d''action effectuée (ex: CREATE_USER, UPDATE_SETTINGS)';
+COMMENT ON COLUMN public.activity_logs.resource IS 'Type de ressource concernée (ex: user, system)';
+COMMENT ON COLUMN public.activity_logs.resource_id IS 'ID de la ressource spécifique (optionnel)';
+COMMENT ON COLUMN public.activity_logs.metadata IS 'Données additionnelles sur l''action (JSON)'; 

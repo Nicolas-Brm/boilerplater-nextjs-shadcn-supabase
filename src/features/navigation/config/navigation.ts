@@ -12,12 +12,7 @@ export const navigationConfig: NavigationItem[] = [
     url: "/dashboard",
     icon: "Home",
   },
-  {
-    title: "Utilisateurs",
-    url: "/dashboard/users",
-    icon: "Users",
-    badge: "12",
-  },
+
   {
     title: "Messages",
     url: "/dashboard/messages",

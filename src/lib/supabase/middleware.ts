@@ -46,6 +46,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Vérification spéciale pour les routes admin
+  if (user && request.nextUrl.pathname.startsWith('/admin')) {
+    // Ici on pourrait ajouter une vérification de rôle admin côté middleware
+    // mais nous le faisons déjà dans le layout admin pour plus de sécurité
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
   // creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:
