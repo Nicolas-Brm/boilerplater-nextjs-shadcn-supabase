@@ -1,0 +1,63 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Cursor Rules - Next.js 15 Server Actions
+
+Ce projet utilise un ensemble de règles organisées pour les Server Actions Next.js 15.
+
+## 📚 Documentation des règles
+
+### Architecture et Structure
+- [Architecture du projet](mdc:project-architecture.mdc) - Organisation basée sur les features, structure des dossiers, conventions de nommage
+
+### Développement
+- [Server Actions](mdc:nextjs-server-actions.mdc) - Déclaration, validation, gestion des erreurs, types TypeScript
+- [Sécurité et Authentification](mdc:security-auth.mdc) - Authentification obligatoire, autorisations, protection des données
+- [Intégration Formulaires](mdc:forms-integration.mdc) - useFormState, useOptimistic, useActionState, validation côté client
+
+### Design et Interface
+- [Design System Shadcn/ui](mdc:shadcn-design-system.mdc) - Composants, couleurs, responsive design, typographie
+- [Sidebar Shadcn/ui](mdc:shadcn-sidebar.mdc) - Configuration, navigation, responsive, patterns avancés
+- [Conventions Tailwind CSS](mdc:tailwind-css-conventions.mdc) - Variables CSS v4, espacement, classes utilitaires
+- [Accessibilité et UX](mdc:accessibility-ux.mdc) - WCAG, navigation clavier, feedback utilisateur
+
+### Performance et Qualité
+- [Performance et Cache](mdc:performance-cache.mdc) - Revalidation, optimisation des requêtes, monitoring
+- [Bonnes Pratiques](mdc:best-practices.mdc) - Testing, documentation, anti-patterns, organisation du code
+
+## 🏗️ Structure du projet
+
+Ce projet suit une architecture basée sur les **features** où chaque fonctionnalité est auto-contenue :
+
+```
+src/
+├── features/           # Features organisées par domaine
+│   ├── auth/          # Authentification
+│   ├── user/          # Gestion utilisateur
+│   └── posts/         # Gestion des posts
+├── app/               # App Router Next.js
+├── components/ui/     # Composants réutilisables
+├── lib/              # Utilitaires globaux
+└── hooks/            # Hooks globaux
+```
+
+## 🎯 Objectifs de ces règles
+
+1. **Sécurité** : Authentification et validation systématiques
+2. **Performance** : Optimisation du cache et des requêtes
+3. **Maintenabilité** : Code structuré et testé
+4. **DX** : Expérience de développement fluide
+5. **UX** : Interface utilisateur réactive
+
+## 🚀 Démarrage rapide
+
+Pour créer une nouvelle feature :
+
+1. Créer le dossier `src/features/{feature-name}/`
+2. Ajouter les sous-dossiers : `actions/`, `components/`, `types/`, `hooks/`
+3. Suivre les conventions définies dans les règles
+4. Implémenter les tests appropriés
+
+Ces règles garantissent un code maintenable, sécurisé et performant pour les Server Actions Next.js 15.

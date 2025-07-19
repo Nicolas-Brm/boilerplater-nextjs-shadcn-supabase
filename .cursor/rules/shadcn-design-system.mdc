@@ -1,0 +1,408 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Design System avec Shadcn/ui
+
+## Configuration du projet
+
+### Configuration Tailwind CSS
+Le projet utilise **Tailwind CSS v4** avec des CSS variables pour la gestion des couleurs. Le fichier [globals.css](mdc:src/app/globals.css) définit toutes les variables de design.
+
+### Variables de couleurs
+Les couleurs sont définies en **OKLCH** pour une meilleure gestion des couleurs et un contraste optimal :
+
+```css
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.147 0.004 49.25);
+  --primary: oklch(0.216 0.006 56.043);
+  --primary-foreground: oklch(0.985 0.001 106.423);
+  /* ... autres variables */
+}
+```
+
+## Conventions de design
+
+### Utilisation des composants Shadcn/ui
+- Toujours utiliser les composants depuis `@/components/ui/`
+- Respecter la hiérarchie des variantes définies
+- Utiliser les variables CSS pour la cohérence
+
+```typescript
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+// ✅ BON - Utilisation standard
+<Button variant="default">Action principale</Button>
+<Button variant="secondary">Action secondaire</Button>
+<Button variant="destructive">Action destructrice</Button>
+
+// ✅ BON - Composition avec Card
+<Card>
+  <CardHeader>
+    <CardTitle>Titre de la carte</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <p>Contenu de la carte</p>
+  </CardContent>
+</Card>
+```
+
+### Système de couleurs
+- Utiliser les tokens de couleur prédéfinis
+- Ne jamais surcharger avec des couleurs arbitraires
+- Respecter le contraste pour l'accessibilité
+
+```typescript
+// ✅ BON - Utilisation des tokens
+<div className="bg-background text-foreground">
+  <h1 className="text-primary">Titre principal</h1>
+  <p className="text-muted-foreground">Texte secondaire</p>
+</div>
+
+// ❌ MAUVAIS - Couleurs arbitraires
+<div className="bg-blue-500 text-white">
+  <h1 className="text-red-600">Titre</h1>
+</div>
+```
+
+### Gestion du dark mode
+Le projet utilise le système de classe `.dark` pour le mode sombre :
+
+```typescript
+// ✅ BON - Classes adaptatives
+<div className="bg-card text-card-foreground border-border">
+  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+    Bouton adaptatif
+  </Button>
+</div>
+
+// Composant avec dark mode
+function ThemeAwareComponent() {
+  return (
+    <div className="bg-background dark:bg-background text-foreground dark:text-foreground">
+      <h2 className="text-primary dark:text-primary">Titre</h2>
+    </div>
+  )
+}
+```
+
+## Organisation des composants
+
+### Structure des composants UI
+Organiser les composants selon la hiérarchie Shadcn/ui :
+
+```
+src/components/ui/
+├── button.tsx          # Composants de base
+├── input.tsx
+├── card.tsx
+├── dialog.tsx
+├── form.tsx            # Composants de formulaire
+├── table.tsx           # Composants de données
+└── navigation-menu.tsx # Composants de navigation
+```
+
+### Composants personnalisés
+Créer des composants métier dans `src/features/{feature}/components/` :
+
+```typescript
+// src/features/auth/components/login-form.tsx
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+export function LoginForm() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Connexion</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Input type="email" placeholder="Email" />
+        <Input type="password" placeholder="Mot de passe" />
+        <Button className="w-full">Se connecter</Button>
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+## Responsive Design
+
+### Points de rupture
+Utiliser les breakpoints Tailwind standard :
+
+```typescript
+// ✅ BON - Design responsive
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <Card className="p-4 sm:p-6">
+    <CardContent>
+      <h3 className="text-lg sm:text-xl font-semibold">Titre</h3>
+      <p className="text-sm sm:text-base text-muted-foreground">Description</p>
+    </CardContent>
+  </Card>
+</div>
+
+// Navigation responsive
+<nav className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+  <Button variant="ghost" size="sm" className="justify-start sm:justify-center">
+    Accueil
+  </Button>
+</nav>
+```
+
+### Composants adaptatifs
+Créer des composants qui s'adaptent automatiquement :
+
+```typescript
+import { cn } from '@/lib/utils'
+
+interface ResponsiveCardProps {
+  children: React.ReactNode
+  className?: string
+  size?: 'sm' | 'md' | 'lg'
+}
+
+export function ResponsiveCard({ children, className, size = 'md' }: ResponsiveCardProps) {
+  return (
+    <Card className={cn(
+      'w-full',
+      {
+        'max-w-sm': size === 'sm',
+        'max-w-md': size === 'md',
+        'max-w-lg': size === 'lg',
+      },
+      className
+    )}>
+      {children}
+    </Card>
+  )
+}
+```
+
+## Layouts et espacement
+
+### Système d'espacement
+Utiliser l'échelle d'espacement cohérente :
+
+```typescript
+// ✅ BON - Espacement cohérent
+<div className="space-y-6">
+  <section className="space-y-4">
+    <h2 className="text-2xl font-bold">Section</h2>
+    <div className="grid gap-4">
+      <Card className="p-6">
+        <div className="space-y-2">
+          <h3 className="font-semibold">Sous-titre</h3>
+          <p className="text-muted-foreground">Description</p>
+        </div>
+      </Card>
+    </div>
+  </section>
+</div>
+
+// ❌ MAUVAIS - Espacement incohérent
+<div style={{ marginTop: '23px', paddingLeft: '17px' }}>
+  <h2 style={{ marginBottom: '11px' }}>Titre</h2>
+</div>
+```
+
+### Layout containers
+Utiliser des conteneurs standardisés :
+
+```typescript
+// Layout principal
+export function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
+    </div>
+  )
+}
+
+// Section avec largeur maximale
+export function ContentSection({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="max-w-4xl mx-auto space-y-6">
+      {children}
+    </section>
+  )
+}
+```
+
+## Typographie
+
+### Hiérarchie des titres
+Respecter la hiérarchie typographique :
+
+```typescript
+// ✅ BON - Hiérarchie claire
+<article className="space-y-6">
+  <h1 className="text-4xl font-bold tracking-tight">Titre principal</h1>
+  <h2 className="text-2xl font-semibold">Sous-titre</h2>
+  <h3 className="text-xl font-medium">Section</h3>
+  
+  <p className="text-base leading-7 text-foreground">
+    Paragraphe principal avec une hauteur de ligne optimale.
+  </p>
+  
+  <p className="text-sm text-muted-foreground">
+    Texte secondaire avec une couleur atténuée.
+  </p>
+</article>
+```
+
+### Styles de texte utilitaires
+Créer des classes réutilisables :
+
+```typescript
+// Composant typographique réutilisable
+export function Typography({ 
+  variant = 'body',
+  children,
+  className 
+}: {
+  variant?: 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'muted'
+  children: React.ReactNode
+  className?: string
+}) {
+  const baseClasses = {
+    h1: 'text-4xl font-bold tracking-tight',
+    h2: 'text-2xl font-semibold',
+    h3: 'text-xl font-medium',
+    body: 'text-base leading-7',
+    small: 'text-sm',
+    muted: 'text-sm text-muted-foreground'
+  }
+
+  const Component = variant.startsWith('h') ? variant as 'h1' | 'h2' | 'h3' : 'p'
+  
+  return (
+    <Component className={cn(baseClasses[variant], className)}>
+      {children}
+    </Component>
+  )
+}
+```
+
+## Formulaires et interactions
+
+### Formulaires avec validation
+Intégrer les composants de formulaire avec validation :
+
+```typescript
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+
+export function FormField({
+  label,
+  error,
+  children,
+  required = false
+}: {
+  label: string
+  error?: string
+  children: React.ReactNode
+  required?: boolean
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
+      {children}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription className="text-sm">{error}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  )
+}
+```
+
+### États d'interaction
+Gérer les états visuels des composants :
+
+```typescript
+// Bouton avec états de chargement
+export function LoadingButton({
+  isLoading,
+  children,
+  ...props
+}: {
+  isLoading?: boolean
+  children: React.ReactNode
+} & React.ComponentProps<typeof Button>) {
+  return (
+    <Button disabled={isLoading} {...props}>
+      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      {children}
+    </Button>
+  )
+}
+
+// États d'erreur et de succès
+<Alert variant="destructive">
+  <AlertCircle className="h-4 w-4" />
+  <AlertTitle>Erreur</AlertTitle>
+  <AlertDescription>Une erreur est survenue.</AlertDescription>
+</Alert>
+
+<Alert>
+  <CheckCircle2 className="h-4 w-4" />
+  <AlertTitle>Succès</AlertTitle>
+  <AlertDescription>Action réalisée avec succès.</AlertDescription>
+</Alert>
+```
+
+## Animations et transitions
+
+### Animations Tailwind
+Utiliser les animations intégrées avec parcimonie :
+
+```typescript
+// ✅ BON - Animations subtiles
+<Card className="transition-all duration-200 hover:shadow-md">
+  <CardContent>
+    <Button className="transition-colors hover:bg-primary/90">
+      Hover effect
+    </Button>
+  </CardContent>
+</Card>
+
+// Animation d'apparition
+<div className="animate-in fade-in-0 duration-300">
+  <Alert>Contenu qui apparaît</Alert>
+</div>
+```
+
+### Micro-interactions
+Ajouter des micro-interactions pour améliorer l'UX :
+
+```typescript
+// Feedback tactile
+<Button className="active:scale-95 transition-transform">
+  Clic avec feedback
+</Button>
+
+// Focus visible
+<Input className="focus:ring-2 focus:ring-ring focus:ring-offset-2" />
+
+// État de survol
+<Card className="group hover:bg-accent/50 transition-colors cursor-pointer">
+  <CardContent>
+    <h3 className="group-hover:text-accent-foreground transition-colors">
+      Titre interactif
+    </h3>
+  </CardContent>
+</Card>
+```

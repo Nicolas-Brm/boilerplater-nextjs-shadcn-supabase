@@ -1,0 +1,287 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Performance et Gestion du Cache
+
+## Revalidation et cache
+
+### Revalidation ciblée
+- Utiliser `revalidatePath()` pour invalider les caches de pages spécifiques
+- Utiliser `revalidateTag()` pour invalider par tags
+- Être spécifique dans les revalidations pour optimiser les performances
+
+```typescript
+import { revalidatePath, revalidateTag } from 'next/cache'
+
+export async function updatePost(id: string, data: PostData) {
+  // Mise à jour en base
+  const updatedPost = await db.post.update({
+    where: { id },
+    data
+  })
+  
+  // Revalider les pages concernées
+  revalidatePath(`/posts/${id}`)        // Page du post spécifique
+  revalidatePath('/posts')              // Liste des posts
+  revalidatePath(`/users/${updatedPost.authorId}/posts`) // Posts de l'auteur
+  
+  // Revalider par tags pour plus de flexibilité
+  revalidateTag('posts')
+  revalidateTag(`post-${id}`)
+  revalidateTag(`user-${updatedPost.authorId}-posts`)
+  
+  return { success: true, data: updatedPost }
+}
+```
+
+### Cache stratégique
+- Utiliser les tags de cache pour organiser les invalidations
+- Implémenter une stratégie de cache cohérente
+- Documenter les relations entre les caches
+
+```typescript
+// Dans vos fetch avec cache tags
+export async function getPost(id: string) {
+  const post = await fetch(`/api/posts/${id}`, {
+    next: { 
+      tags: [`post-${id}`, 'posts'],
+      revalidate: 3600 // 1 heure
+    }
+  })
+  return post.json()
+}
+
+export async function getUserPosts(userId: string) {
+  const posts = await fetch(`/api/users/${userId}/posts`, {
+    next: { 
+      tags: [`user-${userId}-posts`, 'posts'],
+      revalidate: 1800 // 30 minutes
+    }
+  })
+  return posts.json()
+}
+
+// Action qui invalide les caches appropriés
+export async function deletePost(id: string) {
+  const post = await getPost(id)
+  
+  await db.post.delete({ where: { id } })
+  
+  // Invalider tous les caches liés
+  revalidateTag(`post-${id}`)
+  revalidateTag('posts')
+  revalidateTag(`user-${post.authorId}-posts`)
+  
+  return { success: true }
+}
+```
+
+## Optimisation des performances
+
+### Éviter les opérations lourdes
+- Éviter les opérations lourdes dans les Server Actions
+- Utiliser des queues pour les tâches longues
+- Implémenter la pagination pour les listes importantes
+
+```typescript
+import { queue } from '@/lib/queue'
+
+export async function processLargeFile(formData: FormData) {
+  const session = await requireAuth()
+  const file = formData.get('file') as File
+  
+  // Validation rapide
+  if (!file || file.size > 50 * 1024 * 1024) { // 50MB max
+    return { success: false, error: 'Fichier trop volumineux' }
+  }
+  
+  // Créer un job en arrière-plan
+  const job = await queue.add('process-file', {
+    fileName: file.name,
+    fileSize: file.size,
+    userId: session.user.id,
+    fileData: await file.arrayBuffer()
+  })
+  
+  return { 
+    success: true, 
+    data: { jobId: job.id },
+    message: 'Traitement en cours...' 
+  }
+}
+
+// Action pour vérifier le statut
+export async function getProcessingStatus(jobId: string) {
+  const job = await queue.getJob(jobId)
+  
+  return {
+    success: true,
+    data: {
+      status: job.status,
+      progress: job.progress,
+      result: job.result
+    }
+  }
+}
+```
+
+### Pagination efficace
+- Implémenter la pagination côté serveur
+- Utiliser des curseurs pour de meilleures performances
+- Limiter le nombre d'éléments par page
+
+```typescript
+import { z } from 'zod'
+
+const PaginationSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  cursor: z.string().optional(),
+})
+
+export async function getPaginatedPosts(searchParams: URLSearchParams) {
+  const { page, limit, cursor } = PaginationSchema.parse({
+    page: searchParams.get('page'),
+    limit: searchParams.get('limit'),
+    cursor: searchParams.get('cursor'),
+  })
+  
+  const posts = await db.post.findMany({
+    where: cursor ? { id: { lt: cursor } } : undefined,
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    include: {
+      author: { select: { name: true, avatar: true } },
+      _count: { select: { comments: true, likes: true } }
+    }
+  })
+  
+  const nextCursor = posts.length === limit ? posts[posts.length - 1].id : null
+  
+  return {
+    success: true,
+    data: {
+      posts,
+      pagination: {
+        page,
+        limit,
+        nextCursor,
+        hasMore: nextCursor !== null
+      }
+    }
+  }
+}
+```
+
+### Optimisation des requêtes
+- Utiliser des requêtes optimisées
+- Implémenter le batching pour les requêtes multiples
+- Éviter les requêtes N+1
+
+```typescript
+// Mauvais : requête N+1
+export async function getBadPostsWithAuthors() {
+  const posts = await db.post.findMany()
+  
+  const postsWithAuthors = await Promise.all(
+    posts.map(async (post) => {
+      const author = await db.user.findUnique({ where: { id: post.authorId } })
+      return { ...post, author }
+    })
+  )
+  
+  return postsWithAuthors
+}
+
+// Bon : requête optimisée avec include
+export async function getGoodPostsWithAuthors() {
+  const posts = await db.post.findMany({
+    include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true
+        }
+      },
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      _count: {
+        select: {
+          comments: true,
+          likes: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  
+  return posts
+}
+
+// Batching pour requêtes multiples
+export async function getBatchedData(ids: string[]) {
+  const [posts, users, categories] = await Promise.all([
+    db.post.findMany({ where: { id: { in: ids } } }),
+    db.user.findMany({ where: { id: { in: ids } } }),
+    db.category.findMany({ where: { id: { in: ids } } })
+  ])
+  
+  return { posts, users, categories }
+}
+```
+
+## Monitoring et debugging
+
+### Logging des performances
+- Logger les temps d'exécution des actions critiques
+- Monitorer les performances en production
+- Identifier les goulots d'étranglement
+
+```typescript
+export async function monitoredAction(data: any) {
+  const startTime = Date.now()
+  
+  try {
+    const result = await expensiveOperation(data)
+    
+    const duration = Date.now() - startTime
+    console.log(`Action completed in ${duration}ms`)
+    
+    // Log en production pour monitoring
+    if (process.env.NODE_ENV === 'production') {
+      await logPerformance({
+        action: 'monitoredAction',
+        duration,
+        success: true,
+        userId: data.userId
+      })
+    }
+    
+    return { success: true, data: result }
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`Action failed after ${duration}ms:`, error)
+    
+    if (process.env.NODE_ENV === 'production') {
+      await logPerformance({
+        action: 'monitoredAction',
+        duration,
+        success: false,
+        error: error.message,
+        userId: data.userId
+      })
+    }
+    
+    return { success: false, error: 'Une erreur est survenue' }
+  }
+}
+```

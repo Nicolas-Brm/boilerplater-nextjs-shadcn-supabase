@@ -1,0 +1,402 @@
+# Cursor Rules - Next.js 15 Server Actions
+
+## Architecture et Structure
+
+### Organisation des fichiers
+- Créer les Server Actions dans chaque feature sous `src/features/{feature-name}/actions/`
+- Grouper les actions par domaine fonctionnel au sein de chaque feature
+- Utiliser la convention de nommage `kebab-case` pour les fichiers
+- Exporter chaque action avec un nom descriptif
+- Chaque feature est autonome avec ses propres actions, composants, types, etc.
+
+### Structure des dossiers recommandée (basée sur les features)
+```
+src/
+  features/
+    auth/
+      actions/
+        login.ts
+        register.ts
+        logout.ts
+      components/
+        login-form.tsx
+        register-form.tsx
+      types/
+        auth.ts
+      hooks/
+        use-auth.ts
+    user/
+      actions/
+        profile.ts
+        settings.ts
+      components/
+        profile-form.tsx
+        user-avatar.tsx
+      types/
+        user.ts
+    posts/
+      actions/
+        create.ts
+        update.ts
+        delete.ts
+      components/
+        post-card.tsx
+        post-form.tsx
+      types/
+        post.ts
+  app/
+    (auth)/
+    (dashboard)/
+    (landing)/
+  components/
+    ui/ (composants réutilisables)
+  lib/
+    utils.ts
+  hooks/ (hooks globaux)
+```
+
+## Conventions de code
+
+### Déclaration des Server Actions
+- Toujours utiliser la directive `'use server'` en début de fichier ou de fonction
+- Préférer la directive au niveau fichier pour les fichiers dédiés aux actions
+- Utiliser TypeScript avec des types stricts
+
+```typescript
+'use server'
+
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+
+// Définir les schémas de validation
+const CreatePostSchema = z.object({
+  title: z.string().min(1, 'Le titre est requis'),
+  content: z.string().min(10, 'Le contenu doit faire au moins 10 caractères'),
+})
+
+export async function createPost(formData: FormData) {
+  // Implementation
+}
+```
+
+### Validation des données
+- Toujours valider les données d'entrée avec Zod ou un autre validateur
+- Définir les schémas en dehors des fonctions pour la réutilisabilité
+- Gérer les erreurs de validation de manière cohérente
+
+```typescript
+export async function updateUser(formData: FormData) {
+  const validatedFields = UpdateUserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  })
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  // Continuer avec les données validées
+  const { name, email } = validatedFields.data
+}
+```
+
+### Gestion des erreurs
+- Utiliser un format de retour cohérent pour les erreurs
+- Retourner des objets avec `success`, `error`, `data` quand approprié
+- Logger les erreurs côté serveur sans exposer les détails sensibles
+
+```typescript
+export async function deletePost(id: string) {
+  try {
+    // Vérifications d'autorisation
+    // Logique de suppression
+    
+    revalidatePath('/posts')
+    return { success: true, message: 'Post supprimé avec succès' }
+  } catch (error) {
+    console.error('Erreur lors de la suppression:', error)
+    return { 
+      success: false, 
+      error: 'Une erreur est survenue lors de la suppression' 
+    }
+  }
+}
+```
+
+### Sécurité et authentification
+- Toujours vérifier l'authentification en début d'action
+- Valider les autorisations avant toute opération sensible
+- Ne jamais faire confiance aux données côté client
+
+```typescript
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export async function protectedAction() {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  // Vérifier les permissions spécifiques
+  if (!session.user.role.includes('admin')) {
+    throw new Error('Non autorisé')
+  }
+
+  // Continuer avec l'action
+}
+```
+
+### Revalidation et cache
+- Utiliser `revalidatePath()` pour invalider les caches de pages spécifiques
+- Utiliser `revalidateTag()` pour invalider par tags
+- Être spécifique dans les revalidations pour optimiser les performances
+
+```typescript
+import { revalidatePath, revalidateTag } from 'next/cache'
+
+export async function updatePost(id: string, data: PostData) {
+  // Mise à jour en base
+  
+  // Revalider les pages concernées
+  revalidatePath(`/posts/${id}`)
+  revalidatePath('/posts')
+  revalidateTag('posts')
+}
+```
+
+## Organisation par Features
+
+### Principe de co-localisation
+- Chaque feature contient tous ses fichiers liés (actions, composants, types, hooks)
+- Les actions sont spécifiques à leur domaine fonctionnel
+- Éviter les dépendances entre features (utiliser des services partagés dans `lib/` si nécessaire)
+
+### Structure d'une feature
+```
+src/features/{feature-name}/
+  ├── actions/
+  │   ├── create.ts
+  │   ├── update.ts
+  │   ├── delete.ts
+  │   └── index.ts (barrel export)
+  ├── components/
+  │   ├── {feature}-form.tsx
+  │   ├── {feature}-card.tsx
+  │   └── index.ts (barrel export)
+  ├── types/
+  │   ├── {feature}.ts
+  │   └── index.ts (barrel export)
+  ├── hooks/
+  │   ├── use-{feature}.ts
+  │   └── index.ts (barrel export)
+  └── lib/ (optionnel, pour la logique métier spécifique)
+      ├── {feature}-service.ts
+      └── index.ts (barrel export)
+```
+
+### Imports et exports
+- Utiliser des barrel exports (`index.ts`) pour simplifier les imports
+- Importer depuis la feature : `@/features/auth/actions`
+- Importer les composants UI globaux : `@/components/ui/button`
+
+```typescript
+// src/features/auth/actions/index.ts
+export { login } from './login'
+export { register } from './register'
+export { logout } from './logout'
+
+// Utilisation dans un composant
+import { login } from '@/features/auth/actions'
+```
+
+## Bonnes pratiques
+
+### Performance
+- Éviter les opérations lourdes dans les Server Actions
+- Utiliser des queues pour les tâches longues
+- Implémenter la pagination pour les listes importantes
+
+### Nommage
+- Utiliser des verbes d'action: `createUser`, `updatePost`, `deleteComment`
+- Être descriptif: `sendPasswordResetEmail` plutôt que `resetPassword`
+- Le préfixe de domaine n'est pas nécessaire car chaque action est dans sa feature
+- Nommer les fichiers d'actions par verbe: `create.ts`, `update.ts`, `delete.ts`
+
+### Types TypeScript
+- Définir des types de retour explicites
+- Utiliser des interfaces pour les paramètres complexes
+- Exporter les types pour la réutilisation côté client
+
+```typescript
+export interface ActionResult<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  errors?: Record<string, string[]>
+}
+
+export async function createUser(data: CreateUserData): Promise<ActionResult<User>> {
+  // Implementation
+}
+```
+
+### Testing
+- Écrire des tests unitaires pour les Server Actions
+- Mocker les dépendances externes (base de données, APIs)
+- Tester les cas d'erreur et les validations
+
+## Intégration avec les formulaires
+
+### Avec useFormState (recommandé)
+```typescript
+'use client'
+
+import { useFormState } from 'react-dom'
+import { createPost } from '@/features/posts/actions/create'
+
+export function PostForm() {
+  const [state, formAction] = useFormState(createPost, null)
+
+  return (
+    <form action={formAction}>
+      {/* Champs du formulaire */}
+      {state?.errors && (
+        <div className="error">
+          {Object.entries(state.errors).map(([field, messages]) => (
+            <div key={field}>
+              {messages.map(message => <p key={message}>{message}</p>)}
+            </div>
+          ))}
+        </div>
+      )}
+    </form>
+  )
+}
+```
+
+### Avec useOptimistic pour les mises à jour optimistes
+```typescript
+'use client'
+
+import { useOptimistic } from 'react'
+import { updatePost } from '@/features/posts/actions/update'
+
+export function PostEditor({ post }: { post: Post }) {
+  const [optimisticPost, addOptimisticPost] = useOptimistic(
+    post,
+    (state, newPost: Post) => ({ ...state, ...newPost })
+  )
+
+  async function updateAction(formData: FormData) {
+    addOptimisticPost({ title: formData.get('title') as string })
+    await updatePost(post.id, formData)
+  }
+
+  return (
+    <form action={updateAction}>
+      {/* Formulaire */}
+    </form>
+  )
+}
+```
+
+## Anti-patterns à éviter
+
+### ❌ À ne pas faire
+- Utiliser les Server Actions pour la logique métier complexe
+- Retourner des objets non sérialisables
+- Exposer des informations sensibles dans les erreurs
+- Oublier la validation côté serveur
+- Ne pas gérer les cas d'erreur
+- Utiliser des states côté client dans les Server Actions
+
+### ✅ À faire
+- Garder les actions simples et focalisées
+- Valider toutes les entrées
+- Gérer les erreurs gracieusement
+- Utiliser la revalidation appropriée
+- Séparer la logique métier des actions
+- Implémenter l'authentification et l'autorisation
+
+## Exemple complet
+
+```typescript
+'use server'
+
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+
+const CreatePostSchema = z.object({
+  title: z.string().min(1, 'Le titre est requis').max(100),
+  content: z.string().min(10, 'Le contenu doit faire au moins 10 caractères'),
+  categoryId: z.string().uuid('ID de catégorie invalide'),
+})
+
+export interface CreatePostResult {
+  success: boolean
+  data?: { id: string; slug: string }
+  errors?: Record<string, string[]>
+  error?: string
+}
+
+export async function createPost(formData: FormData): Promise<CreatePostResult> {
+  // 1. Vérifier l'authentification
+  const session = await auth()
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  // 2. Valider les données
+  const validatedFields = CreatePostSchema.safeParse({
+    title: formData.get('title'),
+    content: formData.get('content'),
+    categoryId: formData.get('categoryId'),
+  })
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  try {
+    // 3. Logique métier
+    const { title, content, categoryId } = validatedFields.data
+    
+    const post = await db.post.create({
+      data: {
+        title,
+        content,
+        categoryId,
+        authorId: session.user.id,
+        slug: generateSlug(title),
+      },
+    })
+
+    // 4. Revalidation
+    revalidatePath('/posts')
+    revalidatePath(`/categories/${categoryId}`)
+
+    return {
+      success: true,
+      data: { id: post.id, slug: post.slug },
+    }
+  } catch (error) {
+    console.error('Erreur création post:', error)
+    return {
+      success: false,
+      error: 'Une erreur est survenue lors de la création du post',
+    }
+  }
+}
+```
+
+Ces règles garantissent un code maintenable, sécurisé et performant pour les Server Actions Next.js 15. 

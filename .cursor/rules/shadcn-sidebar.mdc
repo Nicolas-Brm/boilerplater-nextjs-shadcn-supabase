@@ -1,0 +1,587 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Sidebar Shadcn/ui - Guide d'utilisation
+
+## Configuration de la Sidebar
+
+### Installation et setup
+Utiliser le CLI Shadcn pour installer la sidebar :
+
+```bash
+pnpm dlx shadcn@latest add sidebar
+```
+
+### Structure de base
+La sidebar Shadcn utilise un système de variables CSS spécifiques définies dans [globals.css](mdc:src/app/globals.css) :
+
+```css
+/* Variables sidebar dans globals.css */
+--sidebar: oklch(0.985 0.001 106.423);
+--sidebar-foreground: oklch(0.147 0.004 49.25);
+--sidebar-primary: oklch(0.216 0.006 56.043);
+--sidebar-primary-foreground: oklch(0.985 0.001 106.423);
+--sidebar-accent: oklch(0.97 0.001 106.424);
+--sidebar-accent-foreground: oklch(0.216 0.006 56.043);
+--sidebar-border: oklch(0.923 0.003 48.717);
+--sidebar-ring: oklch(0.709 0.01 56.259);
+```
+
+## Architecture recommandée
+
+### Layout avec Sidebar
+Organiser le layout principal avec la sidebar dans l'App Router :
+
+```typescript
+// src/app/(dashboard)/layout.tsx
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/features/navigation/components/app-sidebar'
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          {/* Breadcrumb ou navigation */}
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
+```
+
+### Structure de la Sidebar personnalisée
+Créer une sidebar dans la feature navigation :
+
+```typescript
+// src/features/navigation/components/app-sidebar.tsx
+import { Calendar, Home, Inbox, Search, Settings } from 'lucide-react'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
+
+// Menu items data
+const items = [
+  {
+    title: "Accueil",
+    url: "/dashboard",
+    icon: Home,
+  },
+  {
+    title: "Boîte de réception",
+    url: "/inbox",
+    icon: Inbox,
+  },
+  {
+    title: "Calendrier",
+    url: "/calendar",
+    icon: Calendar,
+  },
+  {
+    title: "Recherche",
+    url: "/search",
+    icon: Search,
+  },
+  {
+    title: "Paramètres",
+    url: "/settings",
+    icon: Settings,
+  },
+]
+
+export function AppSidebar() {
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-4 py-2">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <Calendar className="size-4" />
+          </div>
+          <div className="grid flex-1 text-left text-sm leading-tight">
+            <span className="truncate font-semibold">Mon App</span>
+            <span className="truncate text-xs">Enterprise</span>
+          </div>
+        </div>
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      
+      <SidebarFooter>
+        <UserMenu />
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
+```
+
+## Patterns d'usage avancés
+
+### Sidebar avec navigation active
+Gérer l'état actif des éléments de navigation :
+
+```typescript
+// src/features/navigation/components/navigation-menu.tsx
+'use client'
+
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
+
+interface NavigationItem {
+  title: string
+  url: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: string
+}
+
+interface NavigationMenuProps {
+  items: NavigationItem[]
+}
+
+export function NavigationMenu({ items }: NavigationMenuProps) {
+  const pathname = usePathname()
+
+  return (
+    <SidebarMenu>
+      {items.map((item) => {
+        const isActive = pathname === item.url || pathname.startsWith(item.url + '/')
+        
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton 
+              asChild 
+              isActive={isActive}
+              className={cn(
+                "transition-colors",
+                isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+              )}
+            >
+              <a href={item.url}>
+                <item.icon className="size-4" />
+                <span>{item.title}</span>
+                {item.badge && (
+                  <span className="ml-auto text-xs bg-sidebar-primary text-sidebar-primary-foreground px-2 py-1 rounded-full">
+                    {item.badge}
+                  </span>
+                )}
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
+  )
+}
+```
+
+### Sidebar collapsible avec sections
+Créer des sections repliables dans la sidebar :
+
+```typescript
+// src/features/navigation/components/collapsible-navigation.tsx
+import { ChevronRight, type LucideIcon } from 'lucide-react'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+} from '@/components/ui/sidebar'
+
+interface SubItem {
+  title: string
+  url: string
+}
+
+interface NavigationSection {
+  title: string
+  icon: LucideIcon
+  url?: string
+  items?: SubItem[]
+}
+
+interface CollapsibleNavigationProps {
+  sections: NavigationSection[]
+}
+
+export function CollapsibleNavigation({ sections }: CollapsibleNavigationProps) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+      <SidebarMenu>
+        {sections.map((section) => (
+          <Collapsible
+            key={section.title}
+            asChild
+            defaultOpen={false}
+            className="group/collapsible"
+          >
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton tooltip={section.title}>
+                  {section.icon && <section.icon />}
+                  <span>{section.title}</span>
+                  {section.items && (
+                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  )}
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              
+              {section.items && (
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {section.items.map((item) => (
+                      <SidebarMenuSubItem key={item.title}>
+                        <SidebarMenuSubButton asChild>
+                          <a href={item.url}>
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              )}
+            </SidebarMenuItem>
+          </Collapsible>
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
+```
+
+### Menu utilisateur dans la sidebar
+Intégrer un menu utilisateur dans le footer :
+
+```typescript
+// src/features/auth/components/user-menu.tsx
+import { ChevronsUpDown, LogOut, Settings } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@/components/ui/sidebar'
+
+interface User {
+  name: string
+  email: string
+  avatar?: string
+}
+
+interface UserMenuProps {
+  user: User
+}
+
+export function UserMenu({ user }: UserMenuProps) {
+  const { isMobile } = useSidebar()
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback className="rounded-lg">
+                  {user.name.split(' ').map(n => n[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate text-xs">{user.email}</span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          
+          <DropdownMenuContent
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            align="end"
+            sideOffset={4}
+          >
+            <DropdownMenuLabel className="p-0 font-normal">
+              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">
+                    {user.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate text-xs">{user.email}</span>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+            
+            <DropdownMenuSeparator />
+            
+            <DropdownMenuGroup>
+              <DropdownMenuItem>
+                <Settings />
+                Paramètres
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            
+            <DropdownMenuSeparator />
+            
+            <DropdownMenuItem>
+              <LogOut />
+              Se déconnecter
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+```
+
+## Responsive et mobile
+
+### Gestion mobile avec drawer
+La sidebar s'adapte automatiquement sur mobile grâce au SidebarProvider :
+
+```typescript
+// src/features/navigation/components/mobile-sidebar.tsx
+'use client'
+
+import { Menu } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useSidebar } from '@/components/ui/sidebar'
+
+export function MobileSidebarTrigger() {
+  const { toggleSidebar, isMobile } = useSidebar()
+
+  if (!isMobile) {
+    return null
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggleSidebar}
+      className="md:hidden"
+    >
+      <Menu className="h-5 w-5" />
+      <span className="sr-only">Ouvrir la sidebar</span>
+    </Button>
+  )
+}
+```
+
+### Layout responsive avec sidebar
+Gérer les différents états de la sidebar :
+
+```typescript
+// src/features/navigation/hooks/use-sidebar-layout.ts
+'use client'
+
+import { useSidebar } from '@/components/ui/sidebar'
+
+export function useSidebarLayout() {
+  const { state, open, setOpen, openMobile, setOpenMobile, isMobile } = useSidebar()
+
+  const isCollapsed = state === 'collapsed'
+  const isExpanded = state === 'expanded'
+
+  return {
+    isCollapsed,
+    isExpanded,
+    isMobile,
+    open,
+    setOpen,
+    openMobile,
+    setOpenMobile,
+    toggleSidebar: () => {
+      if (isMobile) {
+        setOpenMobile(!openMobile)
+      } else {
+        setOpen(!open)
+      }
+    }
+  }
+}
+```
+
+## Bonnes pratiques
+
+### Organisation des données de navigation
+Centraliser la configuration de navigation :
+
+```typescript
+// src/features/navigation/config/navigation.ts
+import { 
+  Home, 
+  Users, 
+  Settings, 
+  FileText, 
+  BarChart3,
+  type LucideIcon 
+} from 'lucide-react'
+
+export interface NavigationItem {
+  title: string
+  url: string
+  icon: LucideIcon
+  badge?: string
+  items?: Omit<NavigationItem, 'items'>[]
+}
+
+export const navigationConfig: NavigationItem[] = [
+  {
+    title: "Tableau de bord",
+    url: "/dashboard",
+    icon: Home,
+  },
+  {
+    title: "Utilisateurs",
+    url: "/users",
+    icon: Users,
+    badge: "12",
+  },
+  {
+    title: "Rapports",
+    url: "/reports",
+    icon: BarChart3,
+    items: [
+      {
+        title: "Ventes",
+        url: "/reports/sales",
+        icon: BarChart3,
+      },
+      {
+        title: "Analytics",
+        url: "/reports/analytics",
+        icon: BarChart3,
+      },
+    ],
+  },
+  {
+    title: "Documents",
+    url: "/documents",
+    icon: FileText,
+  },
+  {
+    title: "Paramètres",
+    url: "/settings",
+    icon: Settings,
+  },
+]
+```
+
+### Thème et personalisation
+Personnaliser les couleurs de la sidebar via CSS variables :
+
+```css
+/* Dans globals.css pour un thème personnalisé */
+.sidebar-theme-purple {
+  --sidebar-primary: oklch(0.6 0.25 270);
+  --sidebar-primary-foreground: oklch(0.98 0.02 270);
+  --sidebar-accent: oklch(0.95 0.05 270);
+  --sidebar-accent-foreground: oklch(0.2 0.15 270);
+}
+```
+
+### Performance et optimisation
+Lazy loading des composants de sidebar :
+
+```typescript
+// src/features/navigation/components/index.ts
+import { lazy } from 'react'
+
+export const AppSidebar = lazy(() => 
+  import('./app-sidebar').then(mod => ({ default: mod.AppSidebar }))
+)
+
+export const UserMenu = lazy(() => 
+  import('./user-menu').then(mod => ({ default: mod.UserMenu }))
+)
+```
+
+### Accessibilité
+Assurer une navigation accessible :
+
+```typescript
+// ✅ BON - Navigation accessible
+<SidebarMenuButton
+  asChild
+  isActive={isActive}
+  aria-current={isActive ? "page" : undefined}
+  className="focus:ring-2 focus:ring-sidebar-ring focus:ring-offset-2"
+>
+  <a href={item.url}>
+    <item.icon className="size-4" aria-hidden="true" />
+    <span>{item.title}</span>
+  </a>
+</SidebarMenuButton>
+```

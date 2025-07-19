@@ -1,0 +1,253 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Intégration avec les Formulaires
+
+## Intégration avec les formulaires React
+
+### Avec useFormState (recommandé)
+- Utiliser `useFormState` pour gérer l'état des formulaires
+- Intégrer avec les Server Actions pour une UX fluide
+- Gérer les erreurs de validation côté client
+
+```typescript
+'use client'
+
+import { useFormState } from 'react-dom'
+import { createPost } from '@/features/posts/actions/create'
+
+export function PostForm() {
+  const [state, formAction] = useFormState(createPost, null)
+
+  return (
+    <form action={formAction}>
+      <input name="title" type="text" placeholder="Titre" />
+      <textarea name="content" placeholder="Contenu"></textarea>
+      
+      {state?.errors && (
+        <div className="error">
+          {Object.entries(state.errors).map(([field, messages]) => (
+            <div key={field}>
+              {messages.map(message => <p key={message}>{message}</p>)}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {state?.error && (
+        <div className="error">{state.error}</div>
+      )}
+      
+      <button type="submit">Créer</button>
+    </form>
+  )
+}
+```
+
+### Avec useOptimistic pour les mises à jour optimistes
+- Utiliser `useOptimistic` pour les mises à jour immédiates
+- Améliorer l'expérience utilisateur avec des réponses instantanées
+- Gérer les cas d'échec gracieusement
+
+```typescript
+'use client'
+
+import { useOptimistic } from 'react'
+import { updatePost } from '@/features/posts/actions/update'
+
+export function PostEditor({ post }: { post: Post }) {
+  const [optimisticPost, addOptimisticPost] = useOptimistic(
+    post,
+    (state, newPost: Post) => ({ ...state, ...newPost })
+  )
+
+  async function updateAction(formData: FormData) {
+    const title = formData.get('title') as string
+    
+    // Mise à jour optimiste
+    addOptimisticPost({ ...optimisticPost, title })
+    
+    // Appel serveur
+    await updatePost(post.id, formData)
+  }
+
+  return (
+    <form action={updateAction}>
+      <input 
+        name="title" 
+        defaultValue={optimisticPost.title}
+        placeholder="Titre"
+      />
+      <button type="submit">Mettre à jour</button>
+    </form>
+  )
+}
+```
+
+### Avec useActionState (Next.js 15)
+- Utiliser le nouveau hook `useActionState` pour une meilleure gestion d'état
+- Intégration native avec les Server Actions
+- Gestion automatique du loading et des erreurs
+
+```typescript
+'use client'
+
+import { useActionState } from 'react'
+import { createUser } from '@/features/auth/actions/register'
+
+export function RegisterForm() {
+  const [state, action, isPending] = useActionState(createUser, {
+    errors: {},
+    message: ''
+  })
+
+  return (
+    <form action={action}>
+      <input 
+        name="email" 
+        type="email" 
+        placeholder="Email"
+        aria-invalid={state.errors?.email ? 'true' : 'false'}
+      />
+      {state.errors?.email && (
+        <p className="error">{state.errors.email[0]}</p>
+      )}
+      
+      <input 
+        name="password" 
+        type="password" 
+        placeholder="Mot de passe"
+        aria-invalid={state.errors?.password ? 'true' : 'false'}
+      />
+      {state.errors?.password && (
+        <p className="error">{state.errors.password[0]}</p>
+      )}
+      
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Création...' : 'Créer le compte'}
+      </button>
+      
+      {state.message && (
+        <p className={state.errors ? 'error' : 'success'}>
+          {state.message}
+        </p>
+      )}
+    </form>
+  )
+}
+```
+
+## Validation côté client
+
+### Avec React Hook Form et Zod
+- Combiner validation côté client et serveur
+- Utiliser les mêmes schémas Zod
+- Améliorer l'UX avec validation en temps réel
+
+```typescript
+'use client'
+
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { CreatePostSchema } from '@/features/posts/actions/schemas'
+import { createPost } from '@/features/posts/actions/create'
+
+type FormData = z.infer<typeof CreatePostSchema>
+
+export function PostForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<FormData>({
+    resolver: zodResolver(CreatePostSchema)
+  })
+
+  async function onSubmit(data: FormData) {
+    const formData = new FormData()
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value)
+    })
+    
+    const result = await createPost(formData)
+    
+    if (result.success) {
+      // Redirection ou feedback succès
+    } else {
+      // Gérer les erreurs serveur
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input 
+        {...register('title')}
+        placeholder="Titre"
+      />
+      {errors.title && (
+        <p className="error">{errors.title.message}</p>
+      )}
+      
+      <textarea 
+        {...register('content')}
+        placeholder="Contenu"
+      />
+      {errors.content && (
+        <p className="error">{errors.content.message}</p>
+      )}
+      
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Création...' : 'Créer'}
+      </button>
+    </form>
+  )
+}
+```
+
+## Composants de formulaire réutilisables
+
+### Avec Shadcn/ui et Server Actions
+- Créer des composants de formulaire réutilisables
+- Intégrer avec les composants UI existants
+- Gérer les états de chargement et d'erreur
+
+```typescript
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+
+interface FormFieldProps {
+  name: string
+  label: string
+  type?: string
+  errors?: string[]
+  required?: boolean
+}
+
+export function FormField({ name, label, type = 'text', errors, required }: FormFieldProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={name}>
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </Label>
+      <Input
+        id={name}
+        name={name}
+        type={type}
+        required={required}
+        aria-invalid={errors ? 'true' : 'false'}
+        className={errors ? 'border-red-500' : ''}
+      />
+      {errors && errors.map(error => (
+        <Alert key={error} variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ))}
+    </div>
+  )
+}
+```

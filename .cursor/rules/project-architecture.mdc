@@ -1,0 +1,111 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Architecture du Projet - Features Based
+
+## Organisation des fichiers
+- Créer les Server Actions dans chaque feature sous [src/features/{feature-name}/actions/](mdc:src/features)
+- Grouper les actions par domaine fonctionnel au sein de chaque feature
+- Utiliser la convention de nommage `kebab-case` pour les fichiers
+- Exporter chaque action avec un nom descriptif
+- Chaque feature est autonome avec ses propres actions, composants, types, etc.
+
+## Structure des dossiers recommandée (basée sur les features)
+
+```
+src/
+  features/
+    auth/
+      actions/
+        login.ts
+        register.ts
+        logout.ts
+      components/
+        login-form.tsx
+        register-form.tsx
+      types/
+        auth.ts
+      hooks/
+        use-auth.ts
+    user/
+      actions/
+        profile.ts
+        settings.ts
+      components/
+        profile-form.tsx
+        user-avatar.tsx
+      types/
+        user.ts
+    posts/
+      actions/
+        create.ts
+        update.ts
+        delete.ts
+      components/
+        post-card.tsx
+        post-form.tsx
+      types/
+        post.ts
+  app/
+    (auth)/
+    (dashboard)/
+    (landing)/
+  components/
+    ui/ (composants réutilisables)
+  lib/
+    utils.ts
+  hooks/ (hooks globaux)
+```
+
+## Organisation par Features
+
+### Principe de co-localisation
+- Chaque feature contient tous ses fichiers liés (actions, composants, types, hooks)
+- Les actions sont spécifiques à leur domaine fonctionnel
+- Éviter les dépendances entre features (utiliser des services partagés dans [lib/](mdc:src/lib) si nécessaire)
+
+### Structure d'une feature
+```
+src/features/{feature-name}/
+  ├── actions/
+  │   ├── create.ts
+  │   ├── update.ts
+  │   ├── delete.ts
+  │   └── index.ts (barrel export)
+  ├── components/
+  │   ├── {feature}-form.tsx
+  │   ├── {feature}-card.tsx
+  │   └── index.ts (barrel export)
+  ├── types/
+  │   ├── {feature}.ts
+  │   └── index.ts (barrel export)
+  ├── hooks/
+  │   ├── use-{feature}.ts
+  │   └── index.ts (barrel export)
+  └── lib/ (optionnel, pour la logique métier spécifique)
+      ├── {feature}-service.ts
+      └── index.ts (barrel export)
+```
+
+### Imports et exports
+- Utiliser des barrel exports (`index.ts`) pour simplifier les imports
+- Importer depuis la feature : `@/features/auth/actions`
+- Importer les composants UI globaux : `@/components/ui/button`
+
+```typescript
+// src/features/auth/actions/index.ts
+export { login } from './login'
+export { register } from './register'
+export { logout } from './logout'
+
+// Utilisation dans un composant
+import { login } from '@/features/auth/actions'
+```
+
+## Conventions de nommage
+- Utiliser des verbes d'action: `createUser`, `updatePost`, `deleteComment`
+- Être descriptif: `sendPasswordResetEmail` plutôt que `resetPassword`
+- Le préfixe de domaine n'est pas nécessaire car chaque action est dans sa feature
+- Nommer les fichiers d'actions par verbe: `create.ts`, `update.ts`, `delete.ts`

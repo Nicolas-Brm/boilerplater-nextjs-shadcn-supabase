@@ -1,0 +1,386 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Bonnes Pratiques et Anti-patterns
+
+## Bonnes pratiques générales
+
+### Testing
+- Écrire des tests unitaires pour les Server Actions
+- Mocker les dépendances externes (base de données, APIs)
+- Tester les cas d'erreur et les validations
+
+```typescript
+// __tests__/actions/create-post.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createPost } from '@/features/posts/actions/create'
+
+// Mock des dépendances
+vi.mock('@/lib/auth', () => ({
+  auth: vi.fn()
+}))
+
+vi.mock('@/lib/db', () => ({
+  post: {
+    create: vi.fn()
+  }
+}))
+
+describe('createPost', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should create a post successfully', async () => {
+    // Mock de l'authentification
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: 'user-1', name: 'Test User' }
+    })
+
+    // Mock de la création en base
+    vi.mocked(db.post.create).mockResolvedValue({
+      id: 'post-1',
+      title: 'Test Post',
+      content: 'Test content',
+      slug: 'test-post'
+    })
+
+    const formData = new FormData()
+    formData.append('title', 'Test Post')
+    formData.append('content', 'Test content')
+
+    const result = await createPost(formData)
+
+    expect(result.success).toBe(true)
+    expect(result.data?.slug).toBe('test-post')
+  })
+
+  it('should fail with invalid data', async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: 'user-1', name: 'Test User' }
+    })
+
+    const formData = new FormData()
+    formData.append('title', '') // Titre vide
+    formData.append('content', 'Test')
+
+    const result = await createPost(formData)
+
+    expect(result.success).toBe(false)
+    expect(result.errors?.title).toBeDefined()
+  })
+
+  it('should fail when not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    const formData = new FormData()
+    formData.append('title', 'Test Post')
+    formData.append('content', 'Test content')
+
+    await expect(createPost(formData)).rejects.toThrow()
+  })
+})
+```
+
+### Documentation des actions
+- Documenter les paramètres d'entrée et de sortie
+- Inclure des exemples d'utilisation
+- Documenter les cas d'erreur possibles
+
+```typescript
+/**
+ * Crée un nouveau post après validation et authentification
+ * 
+ * @param formData - FormData contenant title, content, categoryId
+ * @returns Promise<CreatePostResult> - Résultat avec succès/erreur
+ * 
+ * @example
+ * ```typescript
+ * const formData = new FormData()
+ * formData.append('title', 'Mon titre')
+ * formData.append('content', 'Contenu du post...')
+ * formData.append('categoryId', 'cat-123')
+ * 
+ * const result = await createPost(formData)
+ * if (result.success) {
+ *   console.log('Post créé:', result.data.slug)
+ * } else {
+ *   console.error('Erreur:', result.error)
+ * }
+ * ```
+ * 
+ * @throws {Error} Redirige vers /login si non authentifié
+ * 
+ * Erreurs possibles:
+ * - Validation des champs échouée
+ * - Catégorie inexistante
+ * - Erreur de base de données
+ */
+export async function createPost(formData: FormData): Promise<CreatePostResult> {
+  // Implementation...
+}
+```
+
+### Organisation du code
+- Garder les actions simples et focalisées
+- Séparer la logique métier des actions
+- Utiliser des services pour la logique complexe
+
+```typescript
+// services/post-service.ts
+export class PostService {
+  static async validatePostData(data: any) {
+    return CreatePostSchema.safeParse(data)
+  }
+
+  static async createPost(data: CreatePostData, authorId: string) {
+    const slug = this.generateSlug(data.title)
+    
+    return await db.post.create({
+      data: {
+        ...data,
+        slug,
+        authorId,
+        publishedAt: new Date()
+      }
+    })
+  }
+
+  static generateSlug(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+  }
+
+  static async checkDuplicateSlug(slug: string): Promise<boolean> {
+    const existing = await db.post.findFirst({
+      where: { slug }
+    })
+    return !!existing
+  }
+}
+
+// actions/create.ts
+export async function createPost(formData: FormData): Promise<CreatePostResult> {
+  const session = await requireAuth()
+  
+  // Validation
+  const validation = PostService.validatePostData({
+    title: formData.get('title'),
+    content: formData.get('content'),
+    categoryId: formData.get('categoryId'),
+  })
+
+  if (!validation.success) {
+    return {
+      success: false,
+      errors: validation.error.flatten().fieldErrors,
+    }
+  }
+
+  try {
+    // Utiliser le service pour la logique métier
+    const post = await PostService.createPost(validation.data, session.user.id)
+    
+    revalidatePath('/posts')
+    
+    return {
+      success: true,
+      data: { id: post.id, slug: post.slug }
+    }
+  } catch (error) {
+    console.error('Erreur création post:', error)
+    return {
+      success: false,
+      error: 'Une erreur est survenue lors de la création du post'
+    }
+  }
+}
+```
+
+## Anti-patterns à éviter
+
+### ❌ À ne pas faire
+
+#### 1. Logique métier complexe dans les actions
+```typescript
+// ❌ MAUVAIS - Trop de logique dans l'action
+export async function badCreatePost(formData: FormData) {
+  // 50 lignes de validation manuelle
+  // 100 lignes de logique métier
+  // Calculs complexes
+  // Intégrations multiples
+  // Etc...
+}
+```
+
+#### 2. Retourner des objets non sérialisables
+```typescript
+// ❌ MAUVAIS - Date n'est pas sérialisable
+export async function badAction() {
+  return {
+    success: true,
+    data: {
+      createdAt: new Date(), // ❌ Erreur de sérialisation
+      user: new User()       // ❌ Instance de classe
+    }
+  }
+}
+
+// ✅ BON - Données sérialisables
+export async function goodAction() {
+  return {
+    success: true,
+    data: {
+      createdAt: new Date().toISOString(), // ✅ String
+      user: {                              // ✅ Plain object
+        id: '123',
+        name: 'John'
+      }
+    }
+  }
+}
+```
+
+#### 3. Exposer des informations sensibles
+```typescript
+// ❌ MAUVAIS - Expose des détails système
+export async function badErrorHandling() {
+  try {
+    await sensitiveOperation()
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message, // ❌ Peut exposer des infos sensibles
+      stack: error.stack    // ❌ Jamais exposer la stack trace
+    }
+  }
+}
+```
+
+#### 4. Oublier la validation côté serveur
+```typescript
+// ❌ MAUVAIS - Fait confiance aux données client
+export async function badValidation(formData: FormData) {
+  const title = formData.get('title') as string
+  const content = formData.get('content') as string
+  
+  // ❌ Aucune validation
+  return await db.post.create({ data: { title, content } })
+}
+```
+
+#### 5. Utiliser des states côté client dans les Server Actions
+```typescript
+// ❌ MAUVAIS - State dans une Server Action
+'use server'
+
+import { useState } from 'react' // ❌ Erreur !
+
+export async function badAction() {
+  const [state, setState] = useState('') // ❌ Impossible !
+  // ...
+}
+```
+
+### ✅ À faire
+
+#### 1. Actions simples et focalisées
+```typescript
+// ✅ BON - Action simple avec une responsabilité claire
+export async function createPost(formData: FormData): Promise<ActionResult> {
+  const session = await requireAuth()
+  const validation = validatePostData(formData)
+  
+  if (!validation.success) {
+    return { success: false, errors: validation.errors }
+  }
+  
+  const post = await PostService.create(validation.data, session.user.id)
+  
+  revalidatePath('/posts')
+  
+  return { success: true, data: post }
+}
+```
+
+#### 2. Validation systématique
+```typescript
+// ✅ BON - Validation avec Zod
+const UpdateUserSchema = z.object({
+  name: z.string().min(2).max(50),
+  email: z.string().email(),
+  bio: z.string().max(500).optional()
+})
+
+export async function updateUser(formData: FormData) {
+  const validation = UpdateUserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    bio: formData.get('bio')
+  })
+  
+  if (!validation.success) {
+    return {
+      success: false,
+      errors: validation.error.flatten().fieldErrors
+    }
+  }
+  
+  // Continuer avec les données validées
+}
+```
+
+#### 3. Gestion d'erreurs appropriée
+```typescript
+// ✅ BON - Gestion sécurisée des erreurs
+export async function safeAction(data: any) {
+  try {
+    const result = await riskyOperation(data)
+    return { success: true, data: result }
+  } catch (error) {
+    // Log détaillé côté serveur
+    logger.error('Operation failed', {
+      error: error.message,
+      stack: error.stack,
+      userId: data.userId,
+      timestamp: new Date().toISOString()
+    })
+    
+    // Message générique côté client
+    return {
+      success: false,
+      error: 'Une erreur est survenue. Veuillez réessayer.'
+    }
+  }
+}
+```
+
+#### 4. Authentification et autorisation
+```typescript
+// ✅ BON - Vérifications systématiques
+export async function secureAction(formData: FormData) {
+  // 1. Authentification
+  const session = await requireAuth()
+  
+  // 2. Validation des données
+  const validation = ActionSchema.safeParse(formData)
+  if (!validation.success) {
+    return { success: false, errors: validation.errors }
+  }
+  
+  // 3. Autorisation spécifique
+  const resource = await getResource(validation.data.resourceId)
+  if (!canAccess(session.user, resource)) {
+    return { success: false, error: 'Accès refusé' }
+  }
+  
+  // 4. Action sécurisée
+  return await performAction(validation.data)
+}
+```

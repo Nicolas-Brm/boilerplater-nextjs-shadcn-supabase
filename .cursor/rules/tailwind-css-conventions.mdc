@@ -1,0 +1,328 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Conventions Tailwind CSS v4
+
+## Configuration CSS Variables
+
+### Structure des variables dans [globals.css](mdc:src/app/globals.css)
+Le projet utilise **Tailwind CSS v4** avec des CSS variables OKLCH pour une gestion optimale des couleurs :
+
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* Variables mappées automatiquement */
+}
+```
+
+### Variables de couleurs personnalisées
+Respecter la nomenclature et les valeurs OKLCH définies :
+
+```css
+:root {
+  --background: oklch(1 0 0);                    /* Blanc pur */
+  --foreground: oklch(0.147 0.004 49.25);        /* Gris très foncé */
+  --primary: oklch(0.216 0.006 56.043);          /* Couleur principale */
+  --primary-foreground: oklch(0.985 0.001 106.423); /* Contraste */
+  --muted: oklch(0.97 0.001 106.424);            /* Gris clair */
+  --muted-foreground: oklch(0.553 0.013 58.071); /* Gris moyen */
+}
+
+.dark {
+  --background: oklch(0.147 0.004 49.25);        /* Gris très foncé */
+  --foreground: oklch(0.985 0.001 106.423);      /* Blanc cassé */
+  /* Variables inversées pour dark mode */
+}
+```
+
+## Conventions d'utilisation
+
+### Classes Tailwind recommandées
+Utiliser les tokens sémantiques plutôt que les valeurs arbitraires :
+
+```typescript
+// ✅ BON - Tokens sémantiques
+<div className="bg-background text-foreground border-border">
+  <h1 className="text-primary">Titre</h1>
+  <p className="text-muted-foreground">Description</p>
+</div>
+
+// ❌ MAUVAIS - Valeurs arbitraires
+<div className="bg-white text-gray-900 border-gray-200">
+  <h1 className="text-blue-600">Titre</h1>
+  <p className="text-gray-500">Description</p>
+</div>
+```
+
+### Système d'espacement
+Utiliser l'échelle d'espacement Tailwind de manière cohérente :
+
+```typescript
+// ✅ BON - Espacement cohérent avec l'échelle Tailwind
+<div className="space-y-6">           // 24px entre éléments
+  <section className="space-y-4">     // 16px dans une section
+    <h2 className="mb-2">Titre</h2>   // 8px sous le titre
+    <div className="p-4 gap-3">       // 16px padding, 12px gap
+      <Button className="px-4 py-2">  // 16px horizontal, 8px vertical
+        Action
+      </Button>
+    </div>
+  </section>
+</div>
+
+// Échelle recommandée : 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12
+// Éviter : gap-7, p-9, m-11, etc.
+```
+
+### Responsive Design
+Suivre l'approche mobile-first avec les breakpoints standards :
+
+```typescript
+// ✅ BON - Mobile-first responsive
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  <Card className="p-4 sm:p-6">
+    <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold">
+      Titre responsive
+    </h3>
+  </Card>
+</div>
+
+// Navigation responsive
+<nav className="flex flex-col sm:flex-row gap-2 sm:gap-4 p-4 sm:p-6">
+  <Button size="sm" className="w-full sm:w-auto">
+    Navigation
+  </Button>
+</nav>
+
+// Breakpoints Tailwind :
+// sm: 640px    (tablette portrait)
+// md: 768px    (tablette paysage)  
+// lg: 1024px   (desktop petit)
+// xl: 1280px   (desktop)
+// 2xl: 1536px  (desktop large)
+```
+
+## Conventions de nommage
+
+### Classes utilitaires composées
+Grouper logiquement les classes par fonction :
+
+```typescript
+// ✅ BON - Groupement logique
+<div className={cn(
+  // Layout
+  "flex flex-col items-center justify-center",
+  // Espacement
+  "p-6 gap-4",
+  // Apparence
+  "bg-card text-card-foreground border border-border rounded-lg",
+  // Interaction
+  "hover:bg-accent hover:text-accent-foreground transition-colors",
+  // Responsive
+  "w-full max-w-md sm:max-w-lg"
+)}>
+
+// ❌ MAUVAIS - Classes mélangées
+<div className="flex bg-card p-6 w-full border text-card-foreground items-center hover:bg-accent rounded-lg transition-colors max-w-md gap-4 flex-col justify-center hover:text-accent-foreground sm:max-w-lg">
+```
+
+### Ordre des classes recommandé
+1. **Layout** : `flex`, `grid`, `block`, `relative`, etc.
+2. **Dimensions** : `w-`, `h-`, `max-w-`, `min-h-`, etc.
+3. **Espacement** : `p-`, `m-`, `gap-`, `space-`, etc.
+4. **Typography** : `text-`, `font-`, `leading-`, etc.
+5. **Apparence** : `bg-`, `border-`, `rounded-`, `shadow-`, etc.
+6. **Interactions** : `hover:`, `focus:`, `active:`, etc.
+7. **Responsive** : `sm:`, `md:`, `lg:`, etc.
+
+### Composants avec variantes
+Créer des systèmes de variantes cohérents :
+
+```typescript
+import { cva, type VariantProps } from 'class-variance-authority'
+
+const buttonVariants = cva(
+  // Classes de base
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline"
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
+    }
+  }
+)
+```
+
+## Patterns d'usage courants
+
+### Cards et conteneurs
+Utiliser des patterns consistants pour les conteneurs :
+
+```typescript
+// Card standard
+<Card className="w-full max-w-md p-6 space-y-4">
+  <CardHeader className="p-0">
+    <CardTitle className="text-xl font-semibold">Titre</CardTitle>
+    <CardDescription className="text-muted-foreground">
+      Description
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="p-0 space-y-4">
+    {/* Contenu */}
+  </CardContent>
+</Card>
+
+// Section de page
+<section className="space-y-6">
+  <div className="space-y-2">
+    <h2 className="text-2xl font-bold tracking-tight">Section</h2>
+    <p className="text-muted-foreground">Description de la section</p>
+  </div>
+  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {/* Contenu de la grille */}
+  </div>
+</section>
+```
+
+### Formulaires
+Patterns cohérents pour les formulaires :
+
+```typescript
+// Formulaire avec espacement cohérent
+<form className="space-y-6">
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <Label htmlFor="email">Email</Label>
+      <Input
+        id="email"
+        type="email"
+        placeholder="votre@email.com"
+        className="w-full"
+      />
+    </div>
+    
+    <div className="space-y-2">
+      <Label htmlFor="password">Mot de passe</Label>
+      <Input
+        id="password"
+        type="password"
+        className="w-full"
+      />
+    </div>
+  </div>
+  
+  <div className="flex flex-col sm:flex-row gap-3">
+    <Button type="submit" className="flex-1">
+      Se connecter
+    </Button>
+    <Button type="button" variant="outline" className="flex-1">
+      Annuler
+    </Button>
+  </div>
+</form>
+```
+
+### Grilles responsive
+Utiliser des grilles qui s'adaptent naturellement :
+
+```typescript
+// Grille adaptative
+<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  {items.map(item => (
+    <Card key={item.id} className="p-4">
+      {/* Contenu */}
+    </Card>
+  ))}
+</div>
+
+// Grille avec auto-fit
+<div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+  {/* S'adapte automatiquement à la largeur disponible */}
+</div>
+
+// Grille asymétrique
+<div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+  <div className="lg:col-span-2">Contenu principal</div>
+  <div className="lg:col-span-1">Sidebar</div>
+</div>
+```
+
+## Performance et optimisation
+
+### Classes conditionnelles optimisées
+Utiliser des patterns efficaces pour les classes conditionnelles :
+
+```typescript
+import { cn } from '@/lib/utils'
+
+// ✅ BON - Utilisation de cn() pour combiner les classes
+const buttonClass = cn(
+  "base-button-classes",
+  isLoading && "opacity-50 cursor-not-allowed",
+  variant === "primary" && "bg-primary text-primary-foreground",
+  size === "large" && "px-8 py-4 text-lg"
+)
+
+// ✅ BON - Template literals pour des conditions simples
+<div className={`base-classes ${isActive ? 'active-classes' : 'inactive-classes'}`}>
+
+// ❌ ÉVITER - Concaténation complexe
+const classes = "base " + 
+  (condition1 ? "class1 " : "") + 
+  (condition2 ? "class2 " : "") + 
+  "more-classes"
+```
+
+### Réutilisation avec des composants
+Créer des composants réutilisables pour éviter la duplication :
+
+```typescript
+// Composant conteneur réutilisable
+export function Container({ 
+  children, 
+  size = 'default',
+  className 
+}: {
+  children: React.ReactNode
+  size?: 'sm' | 'default' | 'lg'
+  className?: string
+}) {
+  return (
+    <div className={cn(
+      "mx-auto px-4 sm:px-6 lg:px-8",
+      {
+        "max-w-3xl": size === 'sm',
+        "max-w-6xl": size === 'default',
+        "max-w-7xl": size === 'lg'
+      },
+      className
+    )}>
+      {children}
+    </div>
+  )
+}
+```

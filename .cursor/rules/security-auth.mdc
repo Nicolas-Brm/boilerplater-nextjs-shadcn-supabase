@@ -1,0 +1,141 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Sécurité et Authentification
+
+## Sécurité des Server Actions
+
+### Authentification obligatoire
+- Toujours vérifier l'authentification en début d'action
+- Valider les autorisations avant toute opération sensible
+- Ne jamais faire confiance aux données côté client
+
+```typescript
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export async function protectedAction() {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  // Vérifier les permissions spécifiques
+  if (!session.user.role.includes('admin')) {
+    throw new Error('Non autorisé')
+  }
+
+  // Continuer avec l'action
+}
+```
+
+### Protection des données sensibles
+- Logger les erreurs côté serveur sans exposer les détails sensibles
+- Ne jamais retourner d'informations système dans les erreurs
+- Utiliser des messages d'erreur génériques côté client
+
+```typescript
+export async function sensitiveAction() {
+  try {
+    // Logique sensible
+    return { success: true, data: result }
+  } catch (error) {
+    // Logger l'erreur complète côté serveur
+    console.error('Erreur détaillée:', error)
+    
+    // Retourner un message générique côté client
+    return { 
+      success: false, 
+      error: 'Une erreur est survenue' 
+    }
+  }
+}
+```
+
+### Validation stricte
+- Valider tous les paramètres d'entrée
+- Utiliser des schémas de validation stricts
+- Vérifier les autorisations pour chaque ressource
+
+```typescript
+import { z } from 'zod'
+
+const UpdateProfileSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(2).max(50),
+  email: z.string().email(),
+})
+
+export async function updateProfile(formData: FormData) {
+  const session = await auth()
+  if (!session?.user) {
+    throw new Error('Non authentifié')
+  }
+
+  const validated = UpdateProfileSchema.parse({
+    id: formData.get('id'),
+    name: formData.get('name'),
+    email: formData.get('email'),
+  })
+
+  // Vérifier que l'utilisateur peut modifier ce profil
+  if (validated.id !== session.user.id && !session.user.isAdmin) {
+    throw new Error('Non autorisé')
+  }
+
+  // Continuer avec la mise à jour
+}
+```
+
+## Gestion des sessions
+
+### Vérification de session
+- Utiliser une fonction d'authentification centralisée
+- Vérifier la validité de la session
+- Gérer l'expiration automatiquement
+
+```typescript
+// lib/auth.ts
+export async function requireAuth() {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect('/login')
+  }
+  
+  return session
+}
+
+// Dans une action
+export async function protectedAction() {
+  const session = await requireAuth()
+  // L'utilisateur est garanti d'être authentifié ici
+}
+```
+
+### Autorisations granulaires
+- Implémenter un système de rôles/permissions
+- Vérifier les autorisations au niveau des ressources
+- Utiliser des middlewares pour les vérifications communes
+
+```typescript
+// lib/permissions.ts
+export function canEditPost(user: User, post: Post): boolean {
+  return user.id === post.authorId || user.role === 'admin'
+}
+
+// Dans une action
+export async function updatePost(postId: string, formData: FormData) {
+  const session = await requireAuth()
+  const post = await getPost(postId)
+  
+  if (!canEditPost(session.user, post)) {
+    throw new Error('Permission refusée')
+  }
+  
+  // Continuer avec la mise à jour
+}
+```
