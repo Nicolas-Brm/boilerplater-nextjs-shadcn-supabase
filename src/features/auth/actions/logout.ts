@@ -27,4 +27,26 @@ export async function logout(): Promise<ActionResult> {
       error: 'Une erreur est survenue lors de la déconnexion',
     }
   }
-} 
+}
+
+export async function logoutAction(_formData: FormData): Promise<void> {
+  const supabase = await createClient()
+
+  try {
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      console.error('Erreur lors de la déconnexion:', error)
+      return
+    }
+
+    revalidatePath('/', 'layout')
+    redirect('/login')
+  } catch (error) {
+    // Ignore NEXT_REDIRECT errors as they are expected
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+      throw error // Re-throw redirect errors
+    }
+    console.error('Erreur lors de la déconnexion:', error)
+  }
+}

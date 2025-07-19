@@ -3,7 +3,7 @@
 import { useActionState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { login } from '../actions'
+import { login } from '../actions/login'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -137,7 +137,7 @@ function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
 
 export function LoginForm() {
   const searchParams = useSearchParams()
-  const message = searchParams.get('message')
+  const message = searchParams?.get('message') || null
   
   return <LoginFormContent initialMessage={message || undefined} />
 } 

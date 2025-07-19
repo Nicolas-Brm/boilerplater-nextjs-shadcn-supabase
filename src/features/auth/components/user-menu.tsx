@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { logoutSimple } from '../actions'
+import { logoutAction } from '../actions/logout'
 import type { User as UserType } from '@supabase/supabase-js'
 
 interface UserMenuProps {
@@ -100,7 +100,7 @@ export function UserMenu({ user }: UserMenuProps) {
             <DropdownMenuSeparator />
             
             <DropdownMenuItem asChild>
-              <form action={logoutSimple} className="w-full">
+              <form action={logoutAction} className="w-full">
                 <button type="submit" className="flex w-full items-center">
                   <LogOut className="size-4 mr-2" />
                   Se déconnecter

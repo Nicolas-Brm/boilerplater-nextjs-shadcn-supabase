@@ -3,7 +3,7 @@
 import { useActionState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { logoutSimple } from '../actions'
+import { logoutSimple } from '../actions/logout-simple'
 import { Loader2, LogOut } from 'lucide-react'
 import { useEffect } from 'react'
 import { toast } from 'sonner'

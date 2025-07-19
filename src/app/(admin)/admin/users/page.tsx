@@ -14,7 +14,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getUsers } from '@/features/admin/actions'
 import { requireAdmin } from '@/features/admin/lib/permissions'
-import { Permission, UserRole } from '@/features/admin/types'
+import { Permission, UserRole, type AdminUser } from '@/features/admin/types'
 import { 
   UserPlus, 
   Eye, 
@@ -40,7 +40,7 @@ function UserRoleBadge({ role }: { role: UserRole }) {
   } as const
 
   return (
-    <Badge variant={roleColors[role] as any}>
+    <Badge variant={roleColors[role] as "default" | "secondary" | "destructive" | "outline"}>
       {role.replace('_', ' ')}
     </Badge>
   )
@@ -143,7 +143,7 @@ async function UsersTable({ searchParams }: { searchParams: URLSearchParams }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user: any) => (
+              {users.map((user: AdminUser) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">

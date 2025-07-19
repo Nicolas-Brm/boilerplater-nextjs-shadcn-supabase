@@ -1,9 +1,8 @@
-import { Suspense } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getAdminStats } from '@/features/admin/actions'
-import { requireAdmin } from '@/features/admin/lib/permissions'
-import { Permission } from '@/features/admin/types'
+import type { AdminStats } from '@/features/admin/types'
 import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { 
@@ -17,7 +16,7 @@ import {
   MemoryStick
 } from 'lucide-react'
 
-function AdminStatsCards({ stats }: { stats: any }) {
+function AdminStatsCards({ stats }: { stats: AdminStats }) {
 
   return (
     <>
@@ -76,7 +75,7 @@ function AdminStatsCards({ stats }: { stats: any }) {
   )
 }
 
-function SystemLoadCards({ systemLoad }: { systemLoad: any }) {
+function SystemLoadCards({ systemLoad }: { systemLoad: AdminStats['systemLoad'] }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -242,12 +241,12 @@ export default async function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <a 
+              <Link 
                 href="/admin/users" 
                 className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
               >
                 Accéder
-              </a>
+              </Link>
             </CardContent>
           </Card>
 

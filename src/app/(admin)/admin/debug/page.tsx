@@ -5,17 +5,43 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
+interface UserDebugInfo {
+  id: string
+  email: string
+  emailVerified: boolean
+  createdAt: string
+  lastSignIn?: string
+}
+
+interface ProfileDebugInfo {
+  id: string
+  first_name?: string
+  last_name?: string
+  role?: string
+  [key: string]: unknown
+}
+
 export default async function DebugPage() {
-  let debugInfo = {
-    user: null as any,
-    profile: null as any,
+  const debugInfo: {
+    user: UserDebugInfo | null
+    profile: ProfileDebugInfo | null
+    envVars: {
+      hasServiceRole: boolean
+      hasSiteUrl: boolean
+      hasSupabaseUrl: boolean
+      hasAnonKey: boolean
+    }
+    error: string | null
+  } = {
+    user: null,
+    profile: null,  
     envVars: {
       hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       hasSiteUrl: !!process.env.NEXT_PUBLIC_SITE_URL,
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     },
-    error: null as string | null
+    error: null
   }
 
   try {
@@ -23,10 +49,10 @@ export default async function DebugPage() {
     const user = await requireAuth()
     debugInfo.user = {
       id: user.id,
-      email: user.email,
+      email: user.email || '',
       emailVerified: !!user.email_confirmed_at,
-      createdAt: user.created_at,
-      lastSignIn: user.last_sign_in_at
+      createdAt: user.created_at || '',
+      lastSignIn: user.last_sign_in_at || undefined
     }
 
     // Récupérer le profil utilisateur

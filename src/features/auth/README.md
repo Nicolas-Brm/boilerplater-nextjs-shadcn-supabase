@@ -12,11 +12,13 @@ src/features/auth/
 │   ├── logout.ts     # Déconnexion (avec état)
 │   ├── logout-simple.ts # Déconnexion (sans état)
 │   ├── forgot-password.ts # Mot de passe oublié
+│   ├── reset-password.ts # Réinitialisation du mot de passe
 │   └── index.ts      # Barrel exports
 ├── components/        # Composants d'interface
 │   ├── login-form.tsx
 │   ├── register-form.tsx
 │   ├── forgot-password-form.tsx
+│   ├── reset-password-form.tsx
 │   ├── logout-button.tsx
 │   └── index.ts      # Barrel exports
 ├── hooks/            # Hooks React
@@ -33,7 +35,7 @@ src/features/auth/
 ### Server Actions
 
 ```typescript
-import { login, register, logout, forgotPassword } from '@/features/auth/actions'
+import { login, register, logout, forgotPassword, resetPassword } from '@/features/auth/actions'
 
 // Dans un composant client avec useFormState
 const [state, formAction] = useFormState(login, null)
@@ -49,6 +51,7 @@ import {
   LoginForm, 
   RegisterForm, 
   ForgotPasswordForm,
+  ResetPasswordForm,
   LogoutButton 
 } from '@/features/auth/components'
 
@@ -112,11 +115,12 @@ Les routes publiques sont :
 
 ## Pages d'authentification
 
-Les pages sont organisées dans `src/app/(auth)/` :
+Les pages sont organisées dans `src/app/(auth)/` et `src/app/auth/` :
 
 - `/login` - Page de connexion
 - `/register` - Page d'inscription
-- `/forgot-password` - Page de réinitialisation du mot de passe
+- `/forgot-password` - Page de demande de réinitialisation
+- `/auth/reset-password` - Page de réinitialisation du mot de passe
 
 Le layout `(auth)` inclut une interface moderne avec :
 - Section informative sur la gauche (desktop)

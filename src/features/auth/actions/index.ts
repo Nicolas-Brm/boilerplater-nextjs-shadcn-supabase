@@ -1,5 +1,6 @@
 export { login } from './login'
 export { register } from './register'
-export { logout } from './logout'
+export { logout, logoutAction } from './logout'
 export { logoutSimple } from './logout-simple'
-export { forgotPassword } from './forgot-password' 
+export { forgotPassword } from './forgot-password'
+export { resetPassword } from './reset-password' 
