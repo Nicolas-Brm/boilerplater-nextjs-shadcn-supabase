@@ -1,4 +1,6 @@
 export { AppSidebar } from './app-sidebar'
-export { SidebarLogo } from './sidebar-logo'
+export { CollapsibleNavigation } from './collapsible-navigation'
 export { NavigationMenu } from './navigation-menu'
-export { CollapsibleNavigation } from './collapsible-navigation' 
+export { SidebarLogo } from './sidebar-logo'
+export { LandingHeader } from './landing-header'
+export { LandingFooter } from './landing-footer' 

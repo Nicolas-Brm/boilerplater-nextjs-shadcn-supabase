@@ -2,7 +2,11 @@ import { Shield } from 'lucide-react'
 import Link from 'next/link'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 
-export function AdminLogo() {
+interface AdminLogoProps {
+  siteName: string
+}
+
+export function AdminLogo({ siteName }: AdminLogoProps) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -12,7 +16,7 @@ export function AdminLogo() {
               <Shield className="size-4" />
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">Administration</span>
+              <span className="truncate font-semibold">{siteName}</span>
               <span className="truncate text-xs">Panneau de contrôle</span>
             </div>
           </Link>

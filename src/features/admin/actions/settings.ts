@@ -10,44 +10,71 @@ import {
 } from '../types'
 import { requireAdmin, logActivity } from '../lib/permissions'
 
+async function fetchSettings(keys?: string[]): Promise<Record<string, any>> {
+  const supabase = await createClient()
+  const query = supabase.from('system_settings').select('key, value')
+  if (keys) query.in('key', keys)
+  const { data: settings, error } = await query
+  if (error) throw new Error(`Error fetching settings: ${error.message}`)
+  return (settings || []).reduce((acc, setting) => {
+    try {
+      // Essayer de parser comme JSON d'abord
+      acc[setting.key] = JSON.parse(setting.value)
+    } catch (parseError) {
+      // Si ça échoue, vérifier si c'est une valeur simple (string, number, boolean)
+      const value = setting.value
+      
+      // Si c'est "true" ou "false", convertir en boolean
+      if (value === 'true') {
+        acc[setting.key] = true
+      } else if (value === 'false') {
+        acc[setting.key] = false
+      } 
+      // Si c'est un nombre, le convertir
+      else if (!isNaN(Number(value)) && value.trim() !== '') {
+        acc[setting.key] = Number(value)
+      }
+      // Sinon, garder comme string
+      else {
+        acc[setting.key] = value
+      }
+    }
+    return acc
+  }, {} as Record<string, any>)
+}
+
+async function updateSettings(updates: { key: string, value: any }[], adminUserId: string) {
+  const supabase = await createClient()
+  for (const update of updates) {
+    const { error } = await supabase
+      .from('system_settings')
+      .update({ value: JSON.stringify(update.value), updated_by: adminUserId })
+      .eq('key', update.key)
+    if (error) throw new Error(`Error updating ${update.key}: ${error.message}`)
+  }
+}
+
 export async function getSystemSettings(): Promise<AdminActionResult<SystemSettings>> {
   try {
-    // Vérifier les permissions admin
     const adminUser = await requireAdmin([Permission.MANAGE_SETTINGS])
-    const supabase = await createClient()
-
-    // Récupérer tous les paramètres système
-    const { data: settings, error } = await supabase
-      .from('system_settings')
-      .select('*')
-
-    if (error) {
-      throw new Error(`Erreur lors de la récupération des paramètres: ${error.message}`)
-    }
-
-    // Transformer les paramètres en objet unique
-    const settingsMap = (settings || []).reduce((acc, setting) => {
-      acc[setting.key] = setting.value
-      return acc
-    }, {} as Record<string, any>)
+    const settingsMap = await fetchSettings()
 
     const systemSettings: SystemSettings = {
       id: 'system',
       siteName: settingsMap.site_name || 'Boilerplate Next.js Pro',
-      siteDescription: settingsMap.site_description || 'Une plateforme moderne et sécurisée construite avec Next.js 15, Supabase et Shadcn/UI. Parfait pour démarrer rapidement vos projets web avec authentification, gestion des utilisateurs et interface d\'administration complète.',
-      allowRegistration: settingsMap.allow_registration !== undefined ? settingsMap.allow_registration : true,
-      requireEmailVerification: settingsMap.require_email_verification !== undefined ? settingsMap.require_email_verification : true,
+      siteDescription: settingsMap.site_description || 'A modern and secure platform built with Next.js 15, Supabase, and Shadcn/UI. Perfect for quickly starting your web projects with authentication, user management, and a complete admin interface.',
+      allowRegistration: settingsMap.allow_registration ?? true,
+      requireEmailVerification: settingsMap.require_email_verification ?? true,
       maxUploadSize: settingsMap.max_upload_size || 25,
-      maintenanceMode: settingsMap.maintenance_mode !== undefined ? settingsMap.maintenance_mode : false,
-      maintenanceMessage: settingsMap.maintenance_message || 'Notre plateforme est temporairement en maintenance pour améliorer votre expérience. Nous serons de retour très bientôt ! Merci de votre patience.',
+      maintenanceMode: settingsMap.maintenance_mode ?? false,
+      maintenanceMessage: settingsMap.maintenance_message || 'Our platform is temporarily under maintenance to enhance your experience. We will be back very soon! Thank you for your patience.',
       updatedAt: new Date().toISOString(),
       updatedBy: adminUser.id,
-      // Nouveaux paramètres
       appVersion: settingsMap.app_version || '1.2.3',
-      supportEmail: settingsMap.support_email || undefined,
+      supportEmail: settingsMap.support_email,
       companyName: settingsMap.company_name || 'Boilerplate Solutions',
-      privacyPolicyUrl: settingsMap.privacy_policy_url || undefined,
-      termsOfServiceUrl: settingsMap.terms_of_service_url || undefined,
+      privacyPolicyUrl: settingsMap.privacy_policy_url,
+      termsOfServiceUrl: settingsMap.terms_of_service_url,
       analyticsEnabled: settingsMap.analytics_enabled || false,
       cookieConsentRequired: settingsMap.cookie_consent_required || false,
       sessionTimeoutHours: settingsMap.session_timeout_hours || 24,
@@ -62,16 +89,10 @@ export async function getSystemSettings(): Promise<AdminActionResult<SystemSetti
 
     await logActivity('VIEW_SETTINGS', 'system')
 
-    return {
-      success: true,
-      data: systemSettings,
-    }
+    return { success: true, data: systemSettings }
   } catch (error) {
-    console.error('Erreur lors de la récupération des paramètres:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue',
-    }
+    console.error('Error fetching settings:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred' }
   }
 }
 
@@ -80,10 +101,8 @@ export async function updateSystemSettings(
   formData: FormData
 ): Promise<AdminActionResult> {
   try {
-    // Vérifier les permissions admin
     const adminUser = await requireAdmin([Permission.MANAGE_SETTINGS])
 
-    // Valider les données
     const validatedFields = SystemSettingsSchema.safeParse({
       siteName: formData.get('siteName'),
       siteDescription: formData.get('siteDescription'),
@@ -95,211 +114,103 @@ export async function updateSystemSettings(
     })
 
     if (!validatedFields.success) {
-      return {
-        success: false,
-        errors: validatedFields.error.flatten().fieldErrors,
-      }
+      return { success: false, errors: validatedFields.error.flatten().fieldErrors }
     }
 
     const settings = validatedFields.data
-    const supabase = await createClient()
-
-    // Préparer les mises à jour
     const updates = [
-      { key: 'site_name', value: JSON.stringify(settings.siteName) },
-      { key: 'site_description', value: JSON.stringify(settings.siteDescription) },
-      { key: 'allow_registration', value: JSON.stringify(settings.allowRegistration) },
-      { key: 'require_email_verification', value: JSON.stringify(settings.requireEmailVerification) },
-      { key: 'max_upload_size', value: JSON.stringify(settings.maxUploadSize) },
-      { key: 'maintenance_mode', value: JSON.stringify(settings.maintenanceMode) },
-      { key: 'maintenance_message', value: JSON.stringify(settings.maintenanceMessage || '') },
+      { key: 'site_name', value: settings.siteName },
+      { key: 'site_description', value: settings.siteDescription },
+      { key: 'allow_registration', value: settings.allowRegistration },
+      { key: 'require_email_verification', value: settings.requireEmailVerification },
+      { key: 'max_upload_size', value: settings.maxUploadSize },
+      { key: 'maintenance_mode', value: settings.maintenanceMode },
+      { key: 'maintenance_message', value: settings.maintenanceMessage || '' },
     ]
 
-    // Mettre à jour chaque paramètre
-    for (const update of updates) {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({
-          value: update.value,
-          updated_by: adminUser.id,
-        })
-        .eq('key', update.key)
+    await updateSettings(updates, adminUser.id)
 
-      if (error) {
-        throw new Error(`Erreur lors de la mise à jour de ${update.key}: ${error.message}`)
-      }
-    }
-
-    await logActivity('UPDATE_SETTINGS', 'system', undefined, {
-      updatedSettings: Object.keys(settings),
-    })
+    await logActivity('UPDATE_SETTINGS', 'system', undefined, { updatedSettings: Object.keys(settings) })
 
     revalidatePath('/admin/settings')
 
-    return {
-      success: true,
-      data: { message: 'Paramètres mis à jour avec succès' },
-    }
+    return { success: true, data: { message: 'Settings updated successfully' } }
   } catch (error) {
-    console.error('Erreur lors de la mise à jour des paramètres:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la mise à jour',
-    }
+    console.error('Error updating settings:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred during the update' }
   }
 }
 
 export async function resetSettings(): Promise<AdminActionResult> {
   try {
-    // Vérifier les permissions admin
     const adminUser = await requireAdmin([Permission.MANAGE_SETTINGS])
-    const supabase = await createClient()
 
-    // Paramètres par défaut
     const defaultSettings = [
-      { key: 'site_name', value: '"Boilerplate Next.js Pro"' },
-      { key: 'site_description', value: '"Une plateforme moderne et sécurisée construite avec Next.js 15, Supabase et Shadcn/UI. Parfait pour démarrer rapidement vos projets web avec authentification, gestion des utilisateurs et interface d\'administration complète."' },
-      { key: 'allow_registration', value: 'true' },
-      { key: 'require_email_verification', value: 'true' },
-      { key: 'max_upload_size', value: '25' },
-      { key: 'maintenance_mode', value: 'false' },
-      { key: 'maintenance_message', value: '"Notre plateforme est temporairement en maintenance pour améliorer votre expérience. Nous serons de retour très bientôt ! Merci de votre patience."' },
-      { key: 'app_version', value: '"1.2.3"' },
-      { key: 'company_name', value: '"Boilerplate Solutions"' },
+      { key: 'site_name', value: 'Boilerplate Next.js Pro' },
+      { key: 'site_description', value: 'A modern and secure platform built with Next.js 15, Supabase, and Shadcn/UI. Perfect for quickly starting your web projects with authentication, user management, and a complete admin interface.' },
+      { key: 'allow_registration', value: true },
+      { key: 'require_email_verification', value: true },
+      { key: 'max_upload_size', value: 25 },
+      { key: 'maintenance_mode', value: false },
+      { key: 'maintenance_message', value: 'Our platform is temporarily under maintenance to enhance your experience. We will be back very soon! Thank you for your patience.' },
+      { key: 'app_version', value: '1.2.3' },
+      { key: 'company_name', value: 'Boilerplate Solutions' },
     ]
 
-    // Réinitialiser chaque paramètre
-    for (const setting of defaultSettings) {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({
-          value: setting.value,
-          updated_by: adminUser.id,
-        })
-        .eq('key', setting.key)
-
-      if (error) {
-        throw new Error(`Erreur lors de la réinitialisation de ${setting.key}: ${error.message}`)
-      }
-    }
+    await updateSettings(defaultSettings, adminUser.id)
 
     await logActivity('RESET_SETTINGS', 'system')
 
     revalidatePath('/admin/settings')
 
-    return {
-      success: true,
-      data: { message: 'Paramètres réinitialisés aux valeurs par défaut' },
-    }
+    return { success: true, data: { message: 'Settings reset to default values' } }
   } catch (error) {
-    console.error('Erreur lors de la réinitialisation des paramètres:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la réinitialisation',
-    }
+    console.error('Error resetting settings:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred during the reset' }
   }
 }
 
 export async function toggleMaintenanceMode(): Promise<AdminActionResult> {
   try {
-    // Vérifier les permissions admin
     const adminUser = await requireAdmin([Permission.MANAGE_SETTINGS])
-    const supabase = await createClient()
+    const settingsMap = await fetchSettings(['maintenance_mode'])
 
-    // Récupérer l'état actuel du mode maintenance
-    const { data: maintenanceSetting } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'maintenance_mode')
-      .single()
-
-    if (!maintenanceSetting) {
-      throw new Error('Paramètre de maintenance non trouvé')
-    }
-
-    const currentMode = JSON.parse(maintenanceSetting.value)
+    const currentMode = settingsMap.maintenance_mode
     const newMode = !currentMode
 
-    // Mettre à jour le mode maintenance
-    const { error } = await supabase
-      .from('system_settings')
-      .update({
-        value: JSON.stringify(newMode),
-        updated_by: adminUser.id,
-      })
-      .eq('key', 'maintenance_mode')
+    await updateSettings([{ key: 'maintenance_mode', value: newMode }], adminUser.id)
 
-    if (error) {
-      throw new Error(`Erreur lors du changement de mode maintenance: ${error.message}`)
-    }
-
-    await logActivity(
-      newMode ? 'ENABLE_MAINTENANCE' : 'DISABLE_MAINTENANCE',
-      'system',
-      undefined,
-      { newMode }
-    )
+    await logActivity(newMode ? 'ENABLE_MAINTENANCE' : 'DISABLE_MAINTENANCE', 'system', undefined, { newMode })
 
     revalidatePath('/admin/settings')
 
-    return {
-      success: true,
-      data: { 
-        message: `Mode maintenance ${newMode ? 'activé' : 'désactivé'}`,
-        maintenanceMode: newMode,
-      },
-    }
+    return { success: true, data: { message: `Maintenance mode ${newMode ? 'enabled' : 'disabled'}`, maintenanceMode: newMode } }
   } catch (error) {
-    console.error('Erreur lors du changement de mode maintenance:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue',
-    }
+    console.error('Error toggling maintenance mode:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred' }
   }
 }
 
 export async function exportSettings(): Promise<AdminActionResult<{ downloadUrl: string }>> {
   try {
-    // Vérifier les permissions admin
     await requireAdmin([Permission.MANAGE_SETTINGS])
-    const supabase = await createClient()
+    const settingsMap = await fetchSettings()
 
-    // Récupérer tous les paramètres
-    const { data: settings, error } = await supabase
-      .from('system_settings')
-      .select('*')
-
-    if (error) {
-      throw new Error(`Erreur lors de l'export des paramètres: ${error.message}`)
-    }
-
-    // Formater en JSON
     const settingsExport = {
       exportDate: new Date().toISOString(),
-      settings: (settings || []).reduce((acc, setting) => {
-        acc[setting.key] = JSON.parse(setting.value)
-        return acc
-      }, {} as Record<string, any>)
+      settings: settingsMap
     }
 
     const jsonContent = JSON.stringify(settingsExport, null, 2)
-
-    // Dans un vrai environnement, vous stockeriez le fichier et retourneriez l'URL
     const blob = new Blob([jsonContent], { type: 'application/json' })
     const downloadUrl = URL.createObjectURL(blob)
 
     await logActivity('EXPORT_SETTINGS', 'system')
 
-    return {
-      success: true,
-      data: { downloadUrl },
-    }
+    return { success: true, data: { downloadUrl } }
   } catch (error) {
-    console.error('Erreur lors de l\'export des paramètres:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue lors de l\'export',
-    }
+    console.error('Error exporting settings:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred during export' }
   }
 } 
 
@@ -309,49 +220,23 @@ export async function getBasicSystemInfo(): Promise<AdminActionResult<{
   companyName: string
 }>> {
   try {
-    const supabase = await createClient()
-
-    // Récupérer seulement les paramètres nécessaires pour le dashboard
-    // Note: Cette fonction peut être appelée par tous les utilisateurs connectés
-    const { data: settings, error } = await supabase
-      .from('system_settings')
-      .select('key, value')
-      .in('key', ['site_name', 'app_version', 'company_name'])
-
-    if (error) {
-      // Retourner des valeurs par défaut si l'accès est refusé
-      return {
-        success: true,
-        data: {
-          siteName: 'Mon Application',
-          appVersion: '1.0.0',
-          companyName: 'Mon Entreprise',
-        },
-      }
-    }
-
-    // Transformer les paramètres en objet
-    const settingsMap = (settings || []).reduce((acc, setting) => {
-      acc[setting.key] = setting.value
-      return acc
-    }, {} as Record<string, any>)
+    const settingsMap = await fetchSettings(['site_name', 'app_version', 'company_name'])
 
     return {
       success: true,
       data: {
-        siteName: settingsMap.site_name || 'Mon Application',
+        siteName: settingsMap.site_name || 'My Application',
         appVersion: settingsMap.app_version || '1.0.0',
-        companyName: settingsMap.company_name || 'Mon Entreprise',
+        companyName: settingsMap.company_name || 'My Company',
       },
     }
   } catch (error) {
-    // En cas d'erreur, retourner des valeurs par défaut
     return {
       success: true,
       data: {
-        siteName: 'Mon Application',
+        siteName: 'My Application',
         appVersion: '1.0.0',
-        companyName: 'Mon Entreprise',
+        companyName: 'My Company',
       },
     }
   }

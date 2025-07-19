@@ -33,6 +33,7 @@ interface AdminSidebarProps {
   quickActions: AdminNavigationItem[]
   currentPath: string
   user?: AdminUser
+  siteName: string
 }
 
 function AdminNavigationSection({ 
@@ -142,12 +143,13 @@ export function AdminSidebar({
   navigationItems, 
   quickActions, 
   currentPath,
-  user 
+  user,
+  siteName
 }: AdminSidebarProps) {
   return (
     <Sidebar collapsible="icon" variant="floating" >
       <SidebarHeader>
-        <AdminLogo />
+        <AdminLogo siteName={siteName} />
       </SidebarHeader>
       
       <SidebarContent>

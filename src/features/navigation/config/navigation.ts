@@ -8,57 +8,80 @@ export interface NavigationItem {
 
 export const navigationConfig: NavigationItem[] = [
   {
-    title: "Tableau de bord",
+    title: "Paid",
     url: "/dashboard",
-    icon: "Home",
+    icon: "DollarSign",
   },
-
   {
-    title: "Messages",
-    url: "/dashboard/messages",
+    title: "Organic",
+    url: "/global/organic",
+    icon: "Leaf",
+  },
+  {
+    title: "Influence",
+    url: "/global/influence",
+    icon: "Users",
+  },
+  {
+    title: "Newsletters",
+    url: "/global/newsletters",
     icon: "Mail",
-    badge: "3",
   },
   {
-    title: "Calendrier",
-    url: "/dashboard/calendar",
-    icon: "Calendar",
+    title: "Landing pages",
+    url: "/global/landing-pages",
+    icon: "File",
   },
   {
-    title: "Rapports",
-    url: "/dashboard/reports",
-    icon: "BarChart3",
+    title: "Products",
+    url: "/global/products",
+    icon: "Box",
+  },
+  {
+    title: "Reports",
+    url: "/insights/reports",
+    icon: "BarChart",
+  },
+  {
+    title: "Sectors",
+    url: "/insights/sectors",
+    icon: "PieChart",
+  },
+  {
+    title: "Understand",
+    url: "/insights/understand",
+    icon: "Eye",
+  },
+  {
+    title: "Brand Safety",
+    url: "/insights/brand-safety",
+    icon: "Shield",
+  },
+  {
+    title: "Collections",
+    url: "/insights/collections",
+    icon: "Folder",
     items: [
       {
-        title: "Ventes",
-        url: "/dashboard/reports/sales",
-        icon: "BarChart3",
+        title: "Collection n°1",
+        url: "/insights/collections/1",
+        icon: "Folder",
       },
       {
-        title: "Analytics",
-        url: "/dashboard/reports/analytics",
-        icon: "BarChart3",
+        title: "Collection n°2",
+        url: "/insights/collections/2",
+        icon: "Folder",
       },
       {
-        title: "Trafic",
-        url: "/dashboard/reports/traffic",
-        icon: "BarChart3",
+        title: "Collection n°3",
+        url: "/insights/collections/3",
+        icon: "Folder",
+      },
+      {
+        title: "Collection n°4",
+        url: "/insights/collections/4",
+        icon: "Folder",
       },
     ],
   },
-  {
-    title: "Documents",
-    url: "/dashboard/documents",
-    icon: "FileText",
-  },
-  {
-    title: "Recherche",
-    url: "/dashboard/search",
-    icon: "Search",
-  },
-  {
-    title: "Paramètres",
-    url: "/dashboard/settings",
-    icon: "Settings",
-  },
-] 
+]

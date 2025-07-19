@@ -3,7 +3,11 @@
 import { Command } from 'lucide-react'
 import { useSidebar } from '@/components/ui/sidebar'
 
-export function SidebarLogo() {
+interface SidebarLogoProps {
+  siteName: string
+}
+
+export function SidebarLogo({ siteName }: SidebarLogoProps) {
   const { state } = useSidebar()
   
   if (state === "collapsed") {
@@ -22,8 +26,8 @@ export function SidebarLogo() {
         <Command className="size-4" />
       </div>
       <div className="grid flex-1 text-left text-sm leading-tight">
-        <span className="truncate font-semibold">Mon Dashboard</span>
-        <span className="truncate text-xs text-sidebar-foreground/70">v2.0.0</span>
+        <span className="truncate font-semibold">{siteName}</span>
+        <span className="truncate text-xs text-sidebar-foreground/70">Tableau de bord</span>
       </div>
     </div>
   )

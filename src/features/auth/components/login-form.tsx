@@ -7,20 +7,24 @@ import { login } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useFormStatus } from 'react-dom'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
   
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button 
+      type="submit" 
+      className="w-full" 
+      disabled={pending}
+      size="default"
+    >
       {pending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Connexion en cours...
+          Connexion...
         </>
       ) : (
         'Se connecter'
@@ -41,85 +45,93 @@ function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
   }, [state, router])
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Connexion</CardTitle>
-        <CardDescription>
-          Connectez-vous à votre compte pour continuer
-        </CardDescription>
-      </CardHeader>
-      <form action={formAction}>
-        <CardContent className="space-y-4">
-          {initialMessage && (
-            <Alert>
-              <AlertDescription>{initialMessage}</AlertDescription>
-            </Alert>
-          )}
-          
-          {state?.error && (
-            <Alert variant="destructive">
-              <AlertDescription>{state.error}</AlertDescription>
-            </Alert>
-          )}
-          
-          {state?.success && state?.data?.message && (
-            <Alert>
-              <AlertDescription>{state.data.message}</AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="votre@email.com"
-              required
-            />
-            {state?.errors?.email && (
-              <p className="text-sm text-red-500">{state.errors.email[0]}</p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              required
-            />
-            {state?.errors?.password && (
-              <p className="text-sm text-red-500">{state.errors.password[0]}</p>
-            )}
-          </div>
-        </CardContent>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Connexion</h1>
+        <p className="text-sm text-muted-foreground">
+          Entrez vos identifiants pour accéder à votre compte
+        </p>
+      </div>
+
+      {/* Form */}
+      <form action={formAction} className="space-y-6">
+        {/* Messages */}
+        {initialMessage && (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>{initialMessage}</AlertDescription>
+          </Alert>
+        )}
         
-        <CardFooter className="flex flex-col space-y-4">
-          <SubmitButton />
-          
-          <div className="flex flex-col items-center space-y-2 text-sm">
+        {state?.error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{state.error}</AlertDescription>
+          </Alert>
+        )}
+        
+        {state?.success && state?.data?.message && (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>{state.data.message}</AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Email Field */}
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="nom@exemple.com"
+            required
+            className="h-11"
+          />
+          {state?.errors?.email && (
+            <p className="text-sm text-destructive">{state.errors.email[0]}</p>
+          )}
+        </div>
+        
+        {/* Password Field */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Mot de passe</Label>
             <Link
               href="/forgot-password"
-              className="text-blue-600 hover:underline"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Mot de passe oublié ?
+              Oublié ?
             </Link>
-            <div>
-              Pas de compte ?{' '}
-              <Link
-                href="/register"
-                className="text-blue-600 hover:underline"
-              >
-                S'inscrire
-              </Link>
-            </div>
           </div>
-        </CardFooter>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            required
+            className="h-11"
+          />
+          {state?.errors?.password && (
+            <p className="text-sm text-destructive">{state.errors.password[0]}</p>
+          )}
+        </div>
+        
+        {/* Submit Button */}
+        <SubmitButton />
       </form>
-    </Card>
+      
+      {/* Footer */}
+      <div className="text-center text-sm text-muted-foreground">
+        Pas de compte ?{' '}
+        <Link
+          href="/register"
+          className="font-medium text-foreground hover:underline"
+        >
+          Créer un compte
+        </Link>
+      </div>
+    </div>
   )
 }
 

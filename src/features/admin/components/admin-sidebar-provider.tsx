@@ -6,9 +6,10 @@ import type { AdminUser } from '../types'
 
 interface AdminSidebarProviderProps {
   user: AdminUser | null
+  siteName: string
 }
 
-export function AdminSidebarProvider({ user }: AdminSidebarProviderProps) {
+export function AdminSidebarProvider({ user, siteName }: AdminSidebarProviderProps) {
   const { navigationItems, quickActions, currentPath } = useAdminSidebar({ 
     user: user || undefined 
   })
@@ -19,6 +20,7 @@ export function AdminSidebarProvider({ user }: AdminSidebarProviderProps) {
       quickActions={quickActions}
       currentPath={currentPath}
       user={user || undefined}
+      siteName={siteName}
     />
   )
 } 

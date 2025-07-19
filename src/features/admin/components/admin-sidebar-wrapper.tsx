@@ -1,11 +1,15 @@
 import { Suspense } from 'react'
 import { getCurrentAdminUser } from '../lib/permissions'
 import { AdminSidebarProvider } from './admin-sidebar-provider'
+import { getPublicSettings } from '@/lib/settings'
 
 async function AdminSidebarContent() {
-  const adminUser = await getCurrentAdminUser()
+  const [adminUser, settings] = await Promise.all([
+    getCurrentAdminUser(),
+    getPublicSettings()
+  ])
   
-  return <AdminSidebarProvider user={adminUser} />
+  return <AdminSidebarProvider user={adminUser} siteName={settings.siteName} />
 }
 
 function AdminSidebarSkeleton() {
