@@ -25,7 +25,16 @@ interface UserCreateFormProps {
 
 export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
   const router = useRouter()
-  const [state, formAction, isPending] = useActionState(createUser, null)
+  
+  // Wrapper function for createUser to add isActive value
+  const createUserAction = async (prevState: any, formData: FormData) => {
+    // Add the isActive value explicitly to formData
+    formData.set('isActive', isActive.toString())
+    
+    return createUser(prevState, formData)
+  }
+  
+  const [state, formAction, isPending] = useActionState(createUserAction, null)
   const [isActive, setIsActive] = useState(true)
 
   // Gérer le succès de la création
@@ -34,8 +43,8 @@ export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
       if (onSuccess) {
         onSuccess()
       } else {
-        // Si pas de callback, rediriger vers la page de l'utilisateur créé
-        router.push(`/admin/users/${state.data.id}`)
+        // Si pas de callback, rediriger vers la liste des utilisateurs
+        router.push('/admin/users')
       }
     }
   }, [state?.success, state?.data, onSuccess, router])
@@ -67,6 +76,26 @@ export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
             )}
           </div>
 
+          {/* Mot de passe */}
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Mot de passe <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Mot de passe sécurisé"
+              required
+              aria-invalid={state?.errors?.password ? 'true' : 'false'}
+            />
+            {state?.errors?.password && (
+              <Alert variant="destructive">
+                <AlertDescription>{state.errors.password[0]}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
           {/* Prénom */}
           <div className="space-y-2">
             <Label htmlFor="firstName">
@@ -76,7 +105,7 @@ export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
               id="firstName"
               name="firstName"
               type="text"
-              placeholder="Jean"
+              placeholder="Prénom"
               required
               aria-invalid={state?.errors?.firstName ? 'true' : 'false'}
             />
@@ -96,7 +125,7 @@ export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
               id="lastName"
               name="lastName"
               type="text"
-              placeholder="Dupont"
+              placeholder="Nom"
               required
               aria-invalid={state?.errors?.lastName ? 'true' : 'false'}
             />
@@ -134,35 +163,12 @@ export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
           <div className="flex items-center space-x-2">
             <Switch
               id="isActive"
-              name="isActive"
               checked={isActive}
               onCheckedChange={setIsActive}
             />
             <Label htmlFor="isActive">
               Compte actif
             </Label>
-          </div>
-
-          {/* Mot de passe temporaire */}
-          <div className="space-y-2">
-            <Label htmlFor="temporaryPassword">
-              Mot de passe temporaire
-            </Label>
-            <Input
-              id="temporaryPassword"
-              name="temporaryPassword"
-              type="password"
-              placeholder="Laisser vide pour générer automatiquement"
-              aria-invalid={state?.errors?.temporaryPassword ? 'true' : 'false'}
-            />
-            {state?.errors?.temporaryPassword && (
-              <Alert variant="destructive">
-                <AlertDescription>{state.errors.temporaryPassword[0]}</AlertDescription>
-              </Alert>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Si aucun mot de passe n'est fourni, un mot de passe temporaire sera généré et envoyé par email.
-            </p>
           </div>
 
           {/* Messages d'erreur généraux */}

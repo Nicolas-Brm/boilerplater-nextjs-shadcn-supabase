@@ -145,7 +145,7 @@ export function AdminSidebar({
   user 
 }: AdminSidebarProps) {
   return (
-    <Sidebar variant="inset">
+    <Sidebar collapsible="icon" variant="floating" >
       <SidebarHeader>
         <AdminLogo />
       </SidebarHeader>

@@ -27,16 +27,31 @@ FOR ALL USING (
 
 -- 4. Créer les paramètres par défaut s'ils n'existent pas
 INSERT INTO public.system_settings (key, value) VALUES
-  ('site_name', '"Mon Application"'),
-  ('site_description', '"Description de mon application"'),
+  ('site_name', '"Boilerplate Next.js Pro"'),
+  ('site_description', '"Une plateforme moderne et sécurisée construite avec Next.js 15, Supabase et Shadcn/UI. Parfait pour démarrer rapidement vos projets web avec authentification, gestion des utilisateurs et interface d''administration complète."'),
   ('allow_registration', 'true'),
   ('require_email_verification', 'true'),
-  ('max_upload_size', '10'),
+  ('max_upload_size', '25'),
   ('maintenance_mode', 'false'),
-  ('maintenance_message', '""')
+  ('maintenance_message', '"Notre plateforme est temporairement en maintenance pour améliorer votre expérience. Nous serons de retour très bientôt ! Merci de votre patience."'),
+  ('app_version', '"1.2.3"'),
+  ('company_name', '"Boilerplate Solutions"')
 ON CONFLICT (key) DO NOTHING;
 
--- 5. Créer la table activity_logs si elle n'existe pas (pour les logs d'audit)
+-- 5. Mettre à jour les valeurs existantes si elles contiennent des guillemets échappés problématiques
+UPDATE public.system_settings 
+SET value = '"Boilerplate Next.js Pro"' 
+WHERE key = 'site_name' AND value = '"\\"\\"\\"Boilerplate Next.js Pro\\"\\"\\""';
+
+UPDATE public.system_settings 
+SET value = '"Une plateforme moderne et sécurisée construite avec Next.js 15, Supabase et Shadcn/UI. Parfait pour démarrer rapidement vos projets web avec authentification, gestion des utilisateurs et interface d''administration complète."' 
+WHERE key = 'site_description' AND (value = '""' OR value::text LIKE '%\\"%');
+
+UPDATE public.system_settings 
+SET value = '"Notre plateforme est temporairement en maintenance pour améliorer votre expérience. Nous serons de retour très bientôt ! Merci de votre patience."' 
+WHERE key = 'maintenance_message' AND value = '""';
+
+-- 6. Créer la table activity_logs si elle n'existe pas (pour les logs d'audit)
 CREATE TABLE IF NOT EXISTS public.activity_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -49,10 +64,10 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. Activer RLS sur activity_logs
+-- 7. Activer RLS sur activity_logs
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
--- 7. Politique RLS pour activity_logs : seuls les admins peuvent voir les logs
+-- 8. Politique RLS pour activity_logs : seuls les admins peuvent voir les logs
 CREATE POLICY "Only admins can view activity logs" ON public.activity_logs
 FOR SELECT USING (
   EXISTS (
@@ -63,7 +78,7 @@ FOR SELECT USING (
   )
 );
 
--- 8. Seuls les admins peuvent insérer des logs
+-- 9. Seuls les admins peuvent insérer des logs
 CREATE POLICY "Only admins can insert activity logs" ON public.activity_logs
 FOR INSERT WITH CHECK (
   EXISTS (
@@ -74,7 +89,7 @@ FOR INSERT WITH CHECK (
   )
 );
 
--- 9. Créer un trigger pour mettre à jour updated_at sur system_settings
+-- 10. Créer un trigger pour mettre à jour updated_at sur system_settings
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -88,13 +103,13 @@ CREATE TRIGGER update_system_settings_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- 10. Créer des index pour optimiser les performances
+-- 11. Créer des index pour optimiser les performances
 CREATE INDEX IF NOT EXISTS idx_system_settings_key ON public.system_settings(key);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON public.activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON public.activity_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON public.activity_logs(action);
 
--- 11. Commentaires sur les tables pour documentation
+-- 12. Commentaires sur les tables pour documentation
 COMMENT ON TABLE public.system_settings IS 'Paramètres de configuration système de l''application';
 COMMENT ON TABLE public.activity_logs IS 'Logs d''audit des actions administratives';
 

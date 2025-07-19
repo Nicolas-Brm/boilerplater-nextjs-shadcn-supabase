@@ -31,6 +31,10 @@ export function UserEditForm({ user, onSuccess }: UserEditFormProps) {
   const updateUserAction = async (prevState: any, formData: FormData) => {
     // Get userId from form data
     const userId = formData.get('userId') as string
+    
+    // Add the isActive value explicitly to formData
+    formData.set('isActive', isActive.toString())
+    
     return updateUser(userId, prevState, formData)
   }
   
@@ -146,7 +150,6 @@ export function UserEditForm({ user, onSuccess }: UserEditFormProps) {
           <div className="flex items-center space-x-2">
             <Switch
               id="isActive"
-              name="isActive"
               checked={isActive}
               onCheckedChange={setIsActive}
             />

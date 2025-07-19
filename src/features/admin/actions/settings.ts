@@ -33,19 +33,19 @@ export async function getSystemSettings(): Promise<AdminActionResult<SystemSetti
 
     const systemSettings: SystemSettings = {
       id: 'system',
-      siteName: settingsMap.site_name || 'Mon Application',
-      siteDescription: settingsMap.site_description || '',
-      allowRegistration: settingsMap.allow_registration || false,
-      requireEmailVerification: settingsMap.require_email_verification || true,
-      maxUploadSize: settingsMap.max_upload_size || 10,
-      maintenanceMode: settingsMap.maintenance_mode || false,
-      maintenanceMessage: settingsMap.maintenance_message || null,
+      siteName: settingsMap.site_name || 'Boilerplate Next.js Pro',
+      siteDescription: settingsMap.site_description || 'Une plateforme moderne et sécurisée construite avec Next.js 15, Supabase et Shadcn/UI. Parfait pour démarrer rapidement vos projets web avec authentification, gestion des utilisateurs et interface d\'administration complète.',
+      allowRegistration: settingsMap.allow_registration !== undefined ? settingsMap.allow_registration : true,
+      requireEmailVerification: settingsMap.require_email_verification !== undefined ? settingsMap.require_email_verification : true,
+      maxUploadSize: settingsMap.max_upload_size || 25,
+      maintenanceMode: settingsMap.maintenance_mode !== undefined ? settingsMap.maintenance_mode : false,
+      maintenanceMessage: settingsMap.maintenance_message || 'Notre plateforme est temporairement en maintenance pour améliorer votre expérience. Nous serons de retour très bientôt ! Merci de votre patience.',
       updatedAt: new Date().toISOString(),
       updatedBy: adminUser.id,
       // Nouveaux paramètres
-      appVersion: settingsMap.app_version || undefined,
+      appVersion: settingsMap.app_version || '1.2.3',
       supportEmail: settingsMap.support_email || undefined,
-      companyName: settingsMap.company_name || undefined,
+      companyName: settingsMap.company_name || 'Boilerplate Solutions',
       privacyPolicyUrl: settingsMap.privacy_policy_url || undefined,
       termsOfServiceUrl: settingsMap.terms_of_service_url || undefined,
       analyticsEnabled: settingsMap.analytics_enabled || false,
@@ -157,13 +157,15 @@ export async function resetSettings(): Promise<AdminActionResult> {
 
     // Paramètres par défaut
     const defaultSettings = [
-      { key: 'site_name', value: '"Mon Application"' },
-      { key: 'site_description', value: '"Description de mon application"' },
+      { key: 'site_name', value: '"Boilerplate Next.js Pro"' },
+      { key: 'site_description', value: '"Une plateforme moderne et sécurisée construite avec Next.js 15, Supabase et Shadcn/UI. Parfait pour démarrer rapidement vos projets web avec authentification, gestion des utilisateurs et interface d\'administration complète."' },
       { key: 'allow_registration', value: 'true' },
       { key: 'require_email_verification', value: 'true' },
-      { key: 'max_upload_size', value: '10' },
+      { key: 'max_upload_size', value: '25' },
       { key: 'maintenance_mode', value: 'false' },
-      { key: 'maintenance_message', value: '""' },
+      { key: 'maintenance_message', value: '"Notre plateforme est temporairement en maintenance pour améliorer votre expérience. Nous serons de retour très bientôt ! Merci de votre patience."' },
+      { key: 'app_version', value: '"1.2.3"' },
+      { key: 'company_name', value: '"Boilerplate Solutions"' },
     ]
 
     // Réinitialiser chaque paramètre

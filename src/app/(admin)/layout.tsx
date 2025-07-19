@@ -25,8 +25,10 @@ async function AdminGuard() {
 
 export default async function AdminLayout({
   children,
+  modal, // Slot modal parallèle
 }: {
   children: React.ReactNode
+  modal: React.ReactNode
 }) {
   return (
     <>
@@ -50,7 +52,7 @@ export default async function AdminLayout({
             </main>
           </div>
         </SidebarInset>
-
+        {modal} {/* Rendu du modal parallèle */}
       </SidebarProvider>
     </>
   )

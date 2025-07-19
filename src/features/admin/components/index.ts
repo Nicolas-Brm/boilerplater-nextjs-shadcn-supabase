@@ -11,8 +11,11 @@ export { SettingsActions } from './settings-actions'
 export { UserCreateForm } from './user-create-form'
 export { UserEditForm } from './user-edit-form'
 export { UserQuickActions } from './user-quick-actions'
-export { UserDetailsModal } from './user-details-modal'
+
 
 // Modal components
 export { AdminModal } from './modal'
-export { AdminModalWithHeader } from './modal-with-header' 
+export { AdminModalWithHeader } from './modal-with-header'
+export { UserCreateModal } from './user-create-modal'
+export { UserDetailsModal } from './user-view-modal'
+export { UserEditModal } from './user-edit-modal' 
