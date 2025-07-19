@@ -113,10 +113,16 @@ export async function requireAuthAPI(request?: Request): Promise<User | null> {
 }
 
 export async function requireNoAuth(): Promise<void> {
-  const user = await getCurrentUser()
-  
-  if (user) {
-    redirect('/dashboard')
+  try {
+    const user = await getCurrentUser()
+    
+    if (user) {
+      redirect('/dashboard')
+    }
+  } catch (error) {
+    // Handle any auth errors gracefully
+    console.log('Auth check during requireNoAuth:', error)
+    // Don't redirect on error, allow access to auth pages
   }
 }
 

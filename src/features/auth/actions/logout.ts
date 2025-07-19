@@ -33,14 +33,20 @@ export async function logoutAction(_formData: FormData): Promise<void> {
   const supabase = await createClient()
 
   try {
-    const { error } = await supabase.auth.signOut()
+    // Clear the session properly
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
 
     if (error) {
       console.error('Erreur lors de la déconnexion:', error)
       return
     }
 
+    // Clear all cache
     revalidatePath('/', 'layout')
+    
+    // Small delay to ensure session is cleared
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     redirect('/login')
   } catch (error) {
     // Ignore NEXT_REDIRECT errors as they are expected
