@@ -17,10 +17,13 @@ import {
   Settings,
   AlertCircle,
   Key,
-  Webhook
+  Webhook,
+  AlertTriangle,
+  Trash2
 } from 'lucide-react'
 import { getUserPrimaryOrganization, getOrganizationSettings } from '../actions'
 import { CreateOrganizationForm } from './create-organization-form'
+import { DeleteOrganizationDialog } from './delete-organization-dialog'
 
 export function OrganizationSettingsForm() {
   const [organization, setOrganization] = useState<any>(null)
@@ -246,6 +249,38 @@ export function OrganizationSettingsForm() {
             Seuls les propriétaires de l'organisation peuvent modifier ces paramètres.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Zone de danger - Suppression */}
+      {organization?.userRole === 'owner' && (
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Zone de danger
+            </CardTitle>
+            <CardDescription>
+              Actions irréversibles sur votre organisation
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start justify-between p-4 border border-destructive/20 rounded-lg">
+              <div className="space-y-1">
+                <h4 className="font-medium text-destructive">Supprimer l'organisation</h4>
+                <p className="text-sm text-muted-foreground">
+                  Supprime définitivement l'organisation et toutes les données associées.
+                  Cette action ne peut pas être annulée.
+                </p>
+              </div>
+              <DeleteOrganizationDialog organization={organization}>
+                <Button variant="destructive" size="sm" className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer
+                </Button>
+              </DeleteOrganizationDialog>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

@@ -3,14 +3,14 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Building2, Users, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Building2, Users, CheckCircle2 } from 'lucide-react'
 import { joinOrganization } from '@/features/organization/actions/create'
 import { getCurrentUser } from '@/lib/auth'
 
 interface InvitePageProps {
-  params: {
+  params: Promise<{
     token: string
-  }
+  }>
 }
 
 async function InviteContent({ token }: { token: string }) {
@@ -81,7 +81,9 @@ function AcceptInvitationForm({ token }: { token: string }) {
   )
 }
 
-export default function InvitePage({ params }: InvitePageProps) {
+export default async function InvitePage({ params }: InvitePageProps) {
+  const { token } = await params
+  
   return (
     <Suspense fallback={
       <div className="container max-w-md mx-auto px-4 py-8">
@@ -95,7 +97,7 @@ export default function InvitePage({ params }: InvitePageProps) {
         </Card>
       </div>
     }>
-      <InviteContent token={params.token} />
+      <InviteContent token={token} />
     </Suspense>
   )
 } 

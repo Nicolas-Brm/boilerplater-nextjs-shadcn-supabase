@@ -53,7 +53,7 @@ import {
 import { OrganizationRole, type OrganizationMember } from '../types'
 
 // Wrappers pour useActionState
-async function handleInviteMember(organizationId: string) {
+function handleInviteMember(organizationId: string) {
   return async (_prevState: any, formData: FormData) => {
     return await inviteMember(organizationId, formData)
   }

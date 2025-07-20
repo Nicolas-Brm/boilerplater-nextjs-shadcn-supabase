@@ -14,14 +14,44 @@ import { getCurrentUser } from '@/lib/auth'
 export async function getOrganizationSettings(organizationId: string): Promise<OrganizationSettings | null> {
   const supabase = await createClient()
   
-  const { data: settings, error } = await supabase
+  // Essayer de récupérer les paramètres existants
+  let { data: settings, error } = await supabase
     .from('organization_settings')
     .select('*')
     .eq('organization_id', organizationId)
     .single()
 
-  if (error) {
+  // Si aucun paramètre n'existe, créer des paramètres par défaut
+  if (error && error.code === 'PGRST116') {
+    const { data: newSettings, error: createError } = await supabase
+      .from('organization_settings')
+      .insert({
+        organization_id: organizationId,
+        default_timezone: 'Europe/Paris',
+        default_language: 'fr',
+        enforce_2fa: false,
+        session_timeout_hours: 24,
+        password_min_length: 8,
+        admin_notifications: true,
+        security_notifications: true,
+        api_enabled: false,
+        webhook_enabled: false
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      console.error('Erreur lors de la création des paramètres par défaut:', createError)
+      return null
+    }
+
+    settings = newSettings
+  } else if (error) {
     console.error('Erreur lors de la récupération des paramètres:', error)
+    return null
+  }
+
+  if (!settings) {
     return null
   }
 
