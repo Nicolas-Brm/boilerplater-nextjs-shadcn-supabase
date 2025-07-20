@@ -91,9 +91,11 @@ export function UserMenu({ user }: UserMenuProps) {
                 <User className="size-4" />
                 Profil
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="size-4" />
-                Paramètres
+              <DropdownMenuItem asChild>
+                <a href="/dashboard/settings" className="flex items-center">
+                  <Settings className="size-4" />
+                  Paramètres
+                </a>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             

@@ -8,9 +8,14 @@ export interface NavigationItem {
 
 export const navigationConfig: NavigationItem[] = [
   {
-    title: "Paid",
+    title: "Tableau de bord",
     url: "/dashboard",
-    icon: "DollarSign",
+    icon: "Home",
+  },
+  {
+    title: "Organisations",
+    url: "/dashboard/organizations",
+    icon: "Building2",
   },
   {
     title: "Organic",

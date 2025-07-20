@@ -1,0 +1,5 @@
+export { ProfileSettingsForm } from './profile-settings-form'
+export { SecuritySettingsForm } from './security-settings-form'
+export { NotificationSettingsForm } from './notification-settings-form'
+export { AppearanceSettingsForm } from './appearance-settings-form'
+export { DataSettingsForm } from './data-settings-form' 

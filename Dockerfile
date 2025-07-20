@@ -57,14 +57,17 @@ FROM base as final
 # Use production node environment by default.
 ENV NODE_ENV production
 
-# Run the application as a non-root user.
-USER node
-
 # Copy all files from the build stage into the image.
 COPY --from=build /usr/src/app /usr/src/app
+
+# Ensure the application directory has the correct permissions for the node user.
+RUN chown -R node:node /usr/src/app
+
+# Run the application as a non-root user.
+USER node
 
 # Expose the port that the application listens on.
 EXPOSE 3000
 
 # Run the application.
-CMD pnpm start
+CMD pnpm dev

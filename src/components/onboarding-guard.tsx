@@ -11,8 +11,8 @@ interface OnboardingGuardProps {
  * Sinon, affiche les enfants normalement
  */
 export async function OnboardingGuard({ children }: OnboardingGuardProps) {
-  // Mode debug : bypass temporaire - FORCER LE BYPASS POUR DEBUG
-  console.log('🔧 [OnboardingGuard] BYPASS TEMPORAIRE FORCÉ POUR DEBUG')
+  // Mode debug : bypass temporaire FORCÉ pour Docker
+  console.log('🔧 [OnboardingGuard] BYPASS TEMPORAIRE ACTIVÉ pour diagnostiquer')
   return <>{children}</>
   
   // Mode debug : bypass temporaire
