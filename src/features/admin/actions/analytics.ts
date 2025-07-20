@@ -5,14 +5,32 @@ import {
   type AdminActionResult,
   type AdminStats,
   type ActivityLog,
-  Permission 
+  Permission,
+  UserRole 
 } from '../types'
-import { requireAdmin, logActivity } from '../lib/permissions'
+import { getCurrentAdminUser, hasRole, hasPermission, requireAdmin, logActivity } from '../lib/permissions'
 
 export async function getAdminStats(): Promise<AdminActionResult<AdminStats>> {
   try {
-    // Vérifier les permissions admin
-    await requireAdmin([Permission.VIEW_ANALYTICS])
+    // Get current admin user without redirects
+    const adminUser = await getCurrentAdminUser()
+    
+    if (!adminUser) {
+      throw new Error('AUTH_REQUIRED')
+    }
+    
+    // Check admin permissions manually
+    if (!hasRole(adminUser.role, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MODERATOR])) {
+      throw new Error('Accès admin requis')
+    }
+    
+    if (!hasPermission(adminUser.role, Permission.VIEW_ANALYTICS)) {
+      throw new Error('Permissions insuffisantes')
+    }
+    
+    if (!adminUser.isActive) {
+      throw new Error('Compte désactivé')
+    }
 
     const supabase = await createClient()
 
@@ -109,11 +127,15 @@ export async function getActivityLogs(
     }
 
     if (filters?.startDate) {
-      query = query.gte('created_at', filters.startDate)
+      // Ajouter l'heure de début de journée pour inclure toute la journée
+      const startDateTime = `${filters.startDate}T00:00:00.000Z`
+      query = query.gte('created_at', startDateTime)
     }
 
     if (filters?.endDate) {
-      query = query.lte('created_at', filters.endDate)
+      // Ajouter l'heure de fin de journée pour inclure toute la journée
+      const endDateTime = `${filters.endDate}T23:59:59.999Z`
+      query = query.lte('created_at', endDateTime)
     }
 
     // Appliquer la pagination

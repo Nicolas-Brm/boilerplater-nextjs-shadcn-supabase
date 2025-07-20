@@ -147,7 +147,7 @@ export function AdminSidebar({
   siteName
 }: AdminSidebarProps) {
   return (
-    <Sidebar collapsible="icon" variant="floating" >
+    <Sidebar collapsible="icon" variant="inset" >
       <SidebarHeader>
         <AdminLogo siteName={siteName} />
       </SidebarHeader>

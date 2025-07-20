@@ -3,6 +3,7 @@ import { requireAuth, requireAuthAPI, getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
+import { redirect } from 'next/navigation'
 
 /**
  * Vérifie si un utilisateur a une permission spécifique
@@ -242,10 +243,10 @@ export async function requireAdmin(
   const adminUser = await getCurrentAdminUser()
 
   if (!adminUser) {
-    // Use requireAuth to trigger redirect to login
-    await requireAuth()
-    // This line should never be reached due to redirect
-    throw new Error('Utilisateur non trouvé')
+    // Rediriger vers la page de connexion si pas d'utilisateur
+    redirect('/login')
+    // Cette ligne ne sera jamais atteinte car redirect() ne retourne jamais
+    throw new Error('Redirection failed')
   }
 
   // Vérifier si l'utilisateur a un rôle admin

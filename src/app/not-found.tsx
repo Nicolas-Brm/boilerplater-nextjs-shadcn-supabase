@@ -2,99 +2,128 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, Home, Search, FileQuestion } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ArrowLeft, Home, Search, FileX, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react'
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="max-w-2xl mx-auto text-center space-y-8">
-        {/* Large 404 Number */}
-        <div className="relative">
-          <h1 className="text-9xl md:text-[12rem] font-bold text-muted-foreground/20 select-none">
-            404
-          </h1>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <FileQuestion className="h-16 w-16 md:h-24 md:w-24 text-muted-foreground/40" />
+      <div className="max-w-md mx-auto text-center space-y-8">
+        {/* Header avec Badge de statut */}
+        <div className="space-y-4">
+          <Badge variant="destructive" className="mx-auto flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Erreur 404
+          </Badge>
+          
+          <div className="relative inline-flex">
+            <div className="absolute inset-0 bg-muted/20 rounded-full blur-xl"></div>
+            <div className="relative bg-card border rounded-full p-6">
+              <FileX className="h-10 w-10 text-muted-foreground" />
+            </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="space-y-6">
+        {/* Contenu principal */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h1 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
+              Page introuvable
+            </h1>
+            <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
+              La page que vous recherchez n'existe pas ou a été déplacée vers un autre emplacement.
+            </p>
+          </div>
+
+          <Separator className="my-6" />
+
+          {/* Actions rapides */}
           <div className="space-y-3">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Page non trouvée
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-md mx-auto">
-              Désolé, la page que vous recherchez semble avoir disparu ou n'existe pas.
-            </p>
-          </div>
-
-          {/* Suggestions Card */}
-          <Card className="border border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4 text-card-foreground">
-                Que souhaitez-vous faire ?
-              </h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button 
-                  asChild 
-                  variant="default" 
-                  size="lg"
-                  className="w-full justify-start"
-                >
-                  <Link href="/">
-                    <Home className="mr-2 h-4 w-4" />
-                    Retour à l'accueil
-                  </Link>
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="w-full justify-start"
-                  onClick={() => window.history.back()}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Page précédente
-                </Button>
-                
-                <Button 
-                  asChild 
-                  variant="outline" 
-                  size="lg"
-                  className="w-full justify-start sm:col-span-2"
-                >
-                  <Link href="/dashboard">
-                    <Search className="mr-2 h-4 w-4" />
-                    Aller au tableau de bord
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Help Text */}
-          <div className="text-sm text-muted-foreground space-y-2">
-            <p>
-              Si vous pensez qu'il s'agit d'une erreur, veuillez vérifier l'URL ou
-            </p>
-            <p>
-              <Link 
-                href="/contact" 
-                className="text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors"
-              >
-                contactez notre équipe de support
+            <Button asChild size="default" className="w-full">
+              <Link href="/">
+                <Home className="h-4 w-4 mr-2" />
+                Retour à l'accueil
               </Link>
-            </p>
+            </Button>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" onClick={() => window.history.back()}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Retour
+              </Button>
+              
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard">
+                  <Search className="h-4 w-4 mr-1" />
+                  Explorer
+                </Link>
+              </Button>
+            </div>
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full text-xs"
+              onClick={() => window.location.reload()}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Recharger la page
+            </Button>
           </div>
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/5 blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-secondary/5 blur-3xl"></div>
-        </div>
+        <Separator className="my-6" />
+
+        {/* Aide et support */}
+        <Card className="text-left">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Besoin d'aide ?</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Vérifiez l'URL ou contactez notre équipe si le problème persiste.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Support disponible</span>
+              <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+                <Link href="/contact">
+                  Contactez-nous
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Navigation suggestions */}
+        <Card className="text-left">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Pages populaires</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              <Button variant="ghost" size="sm" className="w-full justify-start h-8" asChild>
+                <Link href="/dashboard">
+                  <Search className="h-3 w-3 mr-2" />
+                  Tableau de bord
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start h-8" asChild>
+                <Link href="/admin">
+                  <Home className="h-3 w-3 mr-2" />
+                  Administration
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

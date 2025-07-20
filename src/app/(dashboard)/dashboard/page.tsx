@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireAuth } from '@/lib/auth'
 import { SystemInfoDisplay } from '@/components/system-info-display'
+import InputPhoneNumber from '@/components/InputPhoneNumber'
 
 export default async function DashboardPage() {
   const user = await requireAuth()
@@ -13,6 +14,7 @@ export default async function DashboardPage() {
           <p className="text-muted-foreground">
             Tableau de bord de votre application
           </p>
+        
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

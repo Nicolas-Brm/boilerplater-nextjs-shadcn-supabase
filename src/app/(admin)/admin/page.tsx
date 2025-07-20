@@ -15,6 +15,8 @@ import {
   HardDrive,
   MemoryStick
 } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 
 function AdminStatsCards({ stats }: { stats: AdminStats }) {
 
@@ -131,31 +133,46 @@ function SystemLoadCards({ systemLoad }: { systemLoad: AdminStats['systemLoad'] 
 }
 
 export default async function AdminDashboardPage() {
-  // Fetch stats once here instead of in each component
+  // Check authentication first
+  const user = await getCurrentUser()
+  
+  if (!user) {
+    redirect('/login')
+  }
+
+  // Fetch stats with proper error handling
   let statsResult
   
   try {
     statsResult = await getAdminStats()
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error)
+    
+    // If it's an auth error, redirect to login
+    if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
+      redirect('/login')
+    }
+    
+    // If it's an admin access error, show unauthorized page
+    if (error instanceof Error && error.message === 'Accès admin requis') {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Accès non autorisé</h1>
+          <p className="text-destructive">Vous devez avoir des privilèges administrateur pour accéder à cette page.</p>
+          <Button asChild>
+            <Link href="/dashboard">Retour au tableau de bord</Link>
+          </Button>
+        </div>
+      )
+    }
+    
     statsResult = {
       success: false,
       error: error instanceof Error ? error.message : 'Erreur inconnue'
     }
   }
-  
-  // For debugging, use a simpler approach  
-  const user = await getCurrentUser()
-  
-  if (!user) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Erreur d'authentification</h1>
-        <p className="text-destructive">Utilisateur non connecté</p>
-      </div>
-    )
-  }
 
+  // For debugging, use a simpler approach  
   // Récupérer le profil admin directement
   const supabase = await createClient()
   const { data: profile } = await supabase

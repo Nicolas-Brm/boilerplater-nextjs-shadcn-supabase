@@ -1,269 +1,255 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { 
-  Shield, 
-  Zap, 
-  Users, 
-  Palette, 
-  Code, 
-  Database,
-  ArrowRight,
-  CheckCircle,
-  Star
-} from 'lucide-react'
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ArrowRightIcon, DatabaseIcon, ShieldIcon, ZapIcon, SmartphoneIcon } from "lucide-react"
+import InputPhoneNumber from "@/components/InputPhoneNumber"
+import { OnboardingGuard } from "@/components/onboarding-guard"
 
 export default function LandingPage() {
   return (
-    <>
+    <OnboardingGuard>
+      <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="text-center space-y-6">
-        <div className="space-y-4">
-          <Badge variant="secondary" className="mx-auto">
-            <Star className="w-3 h-3 mr-1" />
-            Next.js 15 Ready
-          </Badge>
-          
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Boilerplate Next.js
-          </h1>
-          
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-7">
-            Démarrez rapidement votre projet avec Next.js 15, Shadcn/ui, Supabase et TypeScript. 
-            Tout ce dont vous avez besoin pour créer une application moderne.
-          </p>
-        </div>
+      <section className="flex-1 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center space-y-8">
+          <div className="space-y-4">
+            <Badge variant="secondary" className="mb-4">
+              Next.js 15 + Supabase + Shadcn/ui
+            </Badge>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+              Modern Full-Stack
+              <span className="text-primary"> Boilerplate</span>
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to build production-ready applications with the latest web technologies.
+              Authentication, database, UI components, and more - all configured and ready to go.
+            </p>
+          </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button asChild size="lg" className="gap-2">
-            <Link href="/register">
-              Commencer maintenant
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" size="lg">
-            <Link href="/login">
-              Se connecter
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild size="lg">
+              <Link href="/register">
+                Get Started
+                <ArrowRightIcon className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/login">
+                Sign In
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="space-y-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold">Fonctionnalités incluses</h2>
-          <p className="text-muted-foreground">
-            Tous les outils essentiels pour développer rapidement
-          </p>
-        </div>
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-muted/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
+              Built for Scale
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Production-ready features that grow with your application
+            </p>
+          </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-border/50 hover:border-border transition-colors">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Shield className="w-6 h-6 text-primary" />
-              </div>
-              <CardTitle className="text-lg">Authentification</CardTitle>
-              <CardDescription>
-                Système d'auth complet avec Supabase Auth
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Login / Register</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Mot de passe oublié</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Protection des routes</span>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <ZapIcon className="h-8 w-8 text-primary mb-2" />
+                <CardTitle>Lightning Fast</CardTitle>
+                <CardDescription>
+                  Built with Next.js 15 App Router for optimal performance and developer experience
+                </CardDescription>
+              </CardHeader>
+            </Card>
 
-          <Card className="border-border/50 hover:border-border transition-colors">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Palette className="w-6 h-6 text-primary" />
-              </div>
-              <CardTitle className="text-lg">Design System</CardTitle>
-              <CardDescription>
-                Interface moderne avec Shadcn/ui et Tailwind
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Composants réutilisables</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Dark/Light mode</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Responsive design</span>
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <DatabaseIcon className="h-8 w-8 text-primary mb-2" />
+                <CardTitle>Database Ready</CardTitle>
+                <CardDescription>
+                  Supabase integration with real-time capabilities and type-safe queries
+                </CardDescription>
+              </CardHeader>
+            </Card>
 
-          <Card className="border-border/50 hover:border-border transition-colors">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Database className="w-6 h-6 text-primary" />
-              </div>
-              <CardTitle className="text-lg">Base de données</CardTitle>
-              <CardDescription>
-                Supabase PostgreSQL avec ORM intégré
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>PostgreSQL cloud</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Migrations</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Types TypeScript</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 hover:border-border transition-colors">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary" />
-              </div>
-              <CardTitle className="text-lg">Server Actions</CardTitle>
-              <CardDescription>
-                Next.js 15 Server Actions prêts à l'emploi
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Validation Zod</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Gestion d'erreurs</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Architecture sécurisée</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 hover:border-border transition-colors">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-              <CardTitle className="text-lg">Administration</CardTitle>
-              <CardDescription>
-                Panel d'admin avec gestion des utilisateurs
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Gestion utilisateurs</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Paramètres système</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Analytics</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 hover:border-border transition-colors">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Code className="w-6 h-6 text-primary" />
-              </div>
-              <CardTitle className="text-lg">Dev Experience</CardTitle>
-              <CardDescription>
-                Outils de développement optimisés
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>TypeScript strict</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>ESLint + Prettier</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Hot reload</span>
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <ShieldIcon className="h-8 w-8 text-primary mb-2" />
+                <CardTitle>Secure by Default</CardTitle>
+                <CardDescription>
+                  Built-in authentication, authorization, and security best practices
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
         </div>
       </section>
 
-      {/* Tech Stack */}
-      <section id="tech-stack" className="space-y-6">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold">Stack technique</h2>
-          <p className="text-muted-foreground">
-            Technologies modernes et éprouvées
-          </p>
-        </div>
+      {/* Enhanced Phone Input Demo Section */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <SmartphoneIcon className="h-12 w-12 text-primary mx-auto mb-4" />
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
+              Enhanced Components
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Beautiful, accessible, and feature-rich components built with Shadcn/ui
+            </p>
+          </div>
 
-        <div className="flex flex-wrap justify-center gap-3">
-          {[
-            'Next.js 15',
-            'React 19',
-            'TypeScript',
-            'Tailwind CSS',
-            'Shadcn/ui',
-            'Supabase',
-            'Server Actions',
-            'PostgreSQL'
-          ].map((tech) => (
-            <Badge key={tech} variant="secondary" className="px-3 py-1">
-              {tech}
-            </Badge>
-          ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Phone Input Demo */}
+            <Card>
+              <CardHeader>
+                <CardTitle>International Phone Input</CardTitle>
+                <CardDescription>
+                  Enhanced phone number input with country selection, validation, and accessibility features
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Basic Example */}
+                <div>
+                  <h4 className="font-medium mb-3">Basic Usage</h4>
+                  <InputPhoneNumber
+                    label="Phone Number"
+                    placeholder="Enter your phone number"
+                    description="We'll use this to contact you about your order"
+                  />
+                </div>
+
+                {/* Required Example */}
+                <div>
+                  <h4 className="font-medium mb-3">Required Field</h4>
+                  <InputPhoneNumber
+                    label="Business Phone"
+                    placeholder="Enter business phone"
+                    required
+                  />
+                </div>
+
+                {/* Error Example */}
+                <div>
+                  <h4 className="font-medium mb-3">With Error</h4>
+                  <InputPhoneNumber
+                    label="Contact Number"
+                    placeholder="Enter contact number"
+                    error="Please enter a valid phone number"
+                    required
+                  />
+                </div>
+
+                {/* Disabled Example */}
+                <div>
+                  <h4 className="font-medium mb-3">Disabled State</h4>
+                  <InputPhoneNumber
+                    label="Verified Phone"
+                    value="+15551234567"
+                    disabled
+                    description="This number has been verified"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Features List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Key Features</CardTitle>
+                <CardDescription>
+                  Built with modern web standards and best practices
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                    <div>
+                      <h4 className="font-medium">International Support</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Automatic formatting for phone numbers from all countries with flag indicators
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                    <div>
+                      <h4 className="font-medium">Real-time Validation</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Instant feedback with visual indicators for valid and invalid inputs
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                    <div>
+                      <h4 className="font-medium">Accessibility First</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Built with ARIA labels, keyboard navigation, and screen reader support
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                    <div>
+                      <h4 className="font-medium">Customizable Styling</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Consistent with your design system using Tailwind CSS and CSS variables
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                    <div>
+                      <h4 className="font-medium">Form Integration</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Works seamlessly with React Hook Form, Server Actions, and form libraries
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                    <div>
+                      <h4 className="font-medium">TypeScript Support</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Fully typed with comprehensive prop interfaces and JSDoc documentation
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="text-center space-y-6 border-t border-border/50 pt-8">
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold">
-            Prêt à commencer votre projet ?
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-primary/5">
+        <div className="max-w-4xl mx-auto text-center space-y-6">
+          <h2 className="text-3xl font-bold tracking-tight">
+            Ready to Build Something Amazing?
           </h2>
-          <p className="text-muted-foreground">
-            Créez votre compte et lancez votre application en quelques minutes
+          <p className="text-xl text-muted-foreground">
+            Start with our production-ready boilerplate and focus on what matters most - your unique features.
           </p>
-          
-          <Button asChild size="lg" className="gap-2">
+          <Button asChild size="lg">
             <Link href="/register">
-              Créer un compte gratuitement
-              <ArrowRight className="w-4 h-4" />
+              Get Started Today
+              <ArrowRightIcon className="ml-2 h-4 w-4" />
             </Link>
           </Button>
         </div>
       </section>
-    </>
+    </div>
+    </OnboardingGuard>
   )
 }

@@ -113,16 +113,30 @@ export async function requireAuthAPI(request?: Request): Promise<User | null> {
 }
 
 export async function requireNoAuth(): Promise<void> {
-  try {
-    const user = await getCurrentUser()
-    
-    if (user) {
-      redirect('/dashboard')
+  const user = await getCurrentUser()
+  
+  if (user) {
+    // Utilisateur connecté, déterminer où le rediriger
+    try {
+      // Importer dynamiquement pour éviter les dépendances circulaires
+      const { getCurrentAdminUser } = await import('@/features/admin/lib/permissions')
+      const adminUser = await getCurrentAdminUser()
+      
+      if (adminUser) {
+        redirect('/admin')
+      }
+    } catch (error) {
+      // Ignorer les erreurs de redirection Next.js qui sont normales
+      if (error && typeof error === 'object' && 'digest' in error && 
+          (error as any).digest?.includes('NEXT_REDIRECT')) {
+        throw error
+      }
+      // En cas d'autre erreur, continuer avec redirection normale
+      console.log('Erreur lors de la vérification admin:', error)
     }
-  } catch (error) {
-    // Handle any auth errors gracefully
-    console.log('Auth check during requireNoAuth:', error)
-    // Don't redirect on error, allow access to auth pages
+    
+    // Rediriger vers le dashboard par défaut
+    redirect('/dashboard')
   }
 }
 

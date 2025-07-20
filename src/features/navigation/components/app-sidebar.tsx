@@ -17,7 +17,7 @@ export async function AppSidebar() {
   const settings = await getPublicSettings()
 
   return (
-    <Sidebar collapsible="icon" variant="floating">
+    <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader className="border-b border-sidebar-border">
         <SidebarLogo siteName={settings.siteName} />
       </SidebarHeader>
