@@ -3,7 +3,6 @@ import {
   Users, 
   Activity, 
   Settings, 
-  Shield,
   UserPlus,
   FileText,
   Database,

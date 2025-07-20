@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Filter, Search, CalendarIcon } from 'lucide-react'
+import { Filter, CalendarIcon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
@@ -35,7 +35,7 @@ export function ActivityLogsFilters() {
   const [userIdInput, setUserIdInput] = React.useState(currentFilters.userId)
 
   // Fonction pour mettre à jour les paramètres de recherche
-  const updateSearchParams = (key: string, value: string) => {
+  const updateSearchParams = React.useCallback((key: string, value: string) => {
     const newSearchParams = new URLSearchParams(searchParams.toString())
     if (value && value !== 'all' && value !== '') {
       newSearchParams.set(key, value)
@@ -46,7 +46,7 @@ export function ActivityLogsFilters() {
     newSearchParams.delete('page')
     
     router.push(`?${newSearchParams.toString()}`)
-  }
+  }, [searchParams, router])
 
   // Gérer les changements de dates
   const handleDateRangeChange = (range: DateRange | undefined) => {
@@ -80,7 +80,7 @@ export function ActivityLogsFilters() {
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [userIdInput])
+  }, [userIdInput, updateSearchParams])
 
   return (
     <Card className="border-border/50">

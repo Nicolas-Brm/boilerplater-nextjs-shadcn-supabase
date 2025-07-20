@@ -10,6 +10,7 @@ import {
 } from '../types'
 import { requireAdmin, logActivity } from '../lib/permissions'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchSettings(keys?: string[]): Promise<Record<string, any>> {
   const supabase = await createClient()
   const query = supabase.from('system_settings').select('key, value')
@@ -20,7 +21,7 @@ async function fetchSettings(keys?: string[]): Promise<Record<string, any>> {
     try {
       // Essayer de parser comme JSON d'abord
       acc[setting.key] = JSON.parse(setting.value)
-    } catch (parseError) {
+    } catch {
       // Si ça échoue, vérifier si c'est une valeur simple (string, number, boolean)
       const value = setting.value
       
@@ -40,9 +41,10 @@ async function fetchSettings(keys?: string[]): Promise<Record<string, any>> {
       }
     }
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateSettings(updates: { key: string, value: any }[], adminUserId: string) {
   const supabase = await createClient()
   for (const update of updates) {
@@ -230,7 +232,7 @@ export async function getBasicSystemInfo(): Promise<AdminActionResult<{
         companyName: settingsMap.company_name || 'My Company',
       },
     }
-  } catch (error) {
+  } catch {
     return {
       success: true,
       data: {

@@ -21,7 +21,7 @@ export function ActivityBadge({ action }: ActivityBadgeProps) {
   const color = actionColors[actionType as keyof typeof actionColors] || 'outline'
 
   return (
-    <Badge variant={color as any} className="text-xs">
+    <Badge variant={color as "default" | "secondary" | "destructive" | "outline"} className="text-xs">
       {action.replace(/_/g, ' ')}
     </Badge>
   )

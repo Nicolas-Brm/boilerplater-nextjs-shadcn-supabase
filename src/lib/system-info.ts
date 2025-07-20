@@ -32,14 +32,14 @@ export async function getSystemInfo(): Promise<SystemInfo> {
       // Les valeurs sont stockées en JSONB, on peut les utiliser directement
       acc[setting.key] = typeof setting.value === 'string' ? setting.value : setting.value
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     return {
       siteName: settingsMap.site_name || 'Boilerplate Next.js Pro',
       appVersion: settingsMap.app_version || '1.2.3',
       companyName: settingsMap.company_name || 'Boilerplate Solutions',
     }
-  } catch (error) {
+  } catch {
     // En cas d'erreur, retourner des valeurs par défaut
     return {
       siteName: 'Boilerplate Next.js Pro',

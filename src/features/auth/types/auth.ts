@@ -33,6 +33,7 @@ export type RegisterFormData = z.infer<typeof RegisterSchema>
 export type ForgotPasswordFormData = z.infer<typeof ForgotPasswordSchema>
 export type ResetPasswordFormData = z.infer<typeof ResetPasswordSchema>
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ActionResult<T = any> {
   success: boolean
   data?: T

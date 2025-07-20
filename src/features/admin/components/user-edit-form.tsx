@@ -28,6 +28,7 @@ export function UserEditForm({ user, onSuccess }: UserEditFormProps) {
   const router = useRouter()
   
   // Wrapper function for updateUser to match useActionState signature
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateUserAction = async (prevState: any, formData: FormData) => {
     // Get userId from form data
     const userId = formData.get('userId') as string

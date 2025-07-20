@@ -121,6 +121,7 @@ export interface ActivityLog {
   action: string
   resource: string
   resourceId: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: Record<string, any>
   ipAddress: string
   userAgent: string
@@ -181,6 +182,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 }
 
 // Type pour les résultats d'actions admin
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface AdminActionResult<T = any> {
   success: boolean
   data?: T

@@ -2,11 +2,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { 
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -20,7 +18,7 @@ import {
 import { ModeToggle } from '@/features/theme/components/modetoggle'
 import { getPublicSettings } from '@/lib/settings'
 import { createClient } from '@/lib/supabase/server'
-import { User, Settings, LogOut, LayoutDashboard } from 'lucide-react'
+import { Settings, LogOut, LayoutDashboard } from 'lucide-react'
 
 async function getUser() {
   try {

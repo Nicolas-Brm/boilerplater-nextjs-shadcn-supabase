@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireAuth } from '@/lib/auth'
 import { SystemInfoDisplay } from '@/components/system-info-display'
-import InputPhoneNumber from '@/components/InputPhoneNumber'
 
 export default async function DashboardPage() {
   const user = await requireAuth()

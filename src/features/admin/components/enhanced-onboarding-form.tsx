@@ -41,6 +41,7 @@ async function createSuperAdminWrapper(
   } catch (error) {
     // Si c'est une redirection Next.js (NEXT_REDIRECT), on laisse Next.js la gérer
     if (error && typeof error === 'object' && 'digest' in error && 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (error as any).digest?.includes('NEXT_REDIRECT')) {
       throw error
     }

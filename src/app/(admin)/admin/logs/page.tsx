@@ -6,8 +6,7 @@ import {
   ActivityStatsCards,
   ActivityLogsFilters,
   ActivityLogsTable,
-  ActivityLogsExportButton,
-  ActivityLogsTableSkeleton
+  ActivityLogsExportButton
 } from '@/features/admin/components'
 import { Activity, Download } from 'lucide-react'
 

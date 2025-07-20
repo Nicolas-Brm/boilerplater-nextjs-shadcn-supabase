@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, Shield } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,

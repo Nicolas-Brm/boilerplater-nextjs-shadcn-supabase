@@ -27,7 +27,6 @@ import {
   RefreshCw, 
   Download, 
   AlertTriangle,
-  CheckCircle2,
   Loader2
 } from 'lucide-react'
 
@@ -51,7 +50,7 @@ export function SettingsActions({ settings }: SettingsActionsProps) {
       } else {
         toast.error(result.error || 'Erreur lors du changement de mode')
       }
-    } catch (error) {
+    } catch {
       toast.error('Une erreur est survenue')
     } finally {
       setIsToggling(false)
@@ -69,7 +68,7 @@ export function SettingsActions({ settings }: SettingsActionsProps) {
       } else {
         toast.error(result.error || 'Erreur lors de la réinitialisation')
       }
-    } catch (error) {
+    } catch {
       toast.error('Une erreur est survenue')
     } finally {
       setIsResetting(false)
@@ -94,7 +93,7 @@ export function SettingsActions({ settings }: SettingsActionsProps) {
       } else {
         toast.error(result.error || 'Erreur lors de l\'export')
       }
-    } catch (error) {
+    } catch {
       toast.error('Une erreur est survenue')
     } finally {
       setIsExporting(false)

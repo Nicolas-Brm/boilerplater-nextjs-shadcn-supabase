@@ -434,6 +434,7 @@ export async function updateUser(
     }
 
     // Mettre à jour le profil utilisateur
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {}
     if (firstName !== undefined) updateData.first_name = firstName
     if (lastName !== undefined) updateData.last_name = lastName

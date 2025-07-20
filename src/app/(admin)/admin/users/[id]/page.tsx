@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Edit, Shield, Mail, Phone, Calendar, Activity, Settings } from 'lucide-react'
+import { ArrowLeft, Edit, Shield, Mail, Calendar, Activity, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +22,7 @@ function UserRoleBadge({ role }: { role: UserRole }) {
   const config = roleConfig[role]
 
   return (
-    <Badge variant={config.color as any} className="gap-1">
+    <Badge variant={config.color as "default" | "secondary" | "destructive" | "outline"} className="gap-1">
       {config.icon}
       {role.replace('_', ' ')}
     </Badge>

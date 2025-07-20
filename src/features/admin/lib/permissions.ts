@@ -143,6 +143,7 @@ export async function getCurrentAdminUserAPI(request?: Request): Promise<AdminUs
     console.log('✅ [AUTH] Utilisateur trouvé:', user.email, 'ID:', user.id)
 
     // Utiliser le même client Supabase que requireAuthAPI
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let supabase: any
     
     if (request) {
@@ -183,7 +184,7 @@ export async function getCurrentAdminUserAPI(request?: Request): Promise<AdminUs
                 cookiesToSet.forEach(({ name, value, options }) => {
                   cookieStore.set(name, value, options)
                 })
-              } catch (error) {
+              } catch {
                 // ignore les erreurs de cookies en API route
               }
             },
@@ -334,6 +335,7 @@ export async function logActivity(
   action: string,
   resource: string,
   resourceId?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>,
   request?: Request
 ) {

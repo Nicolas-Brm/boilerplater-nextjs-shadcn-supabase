@@ -7,7 +7,7 @@ import {
   adminQuickActions, 
   filterNavigationByPermissions 
 } from '../config/navigation'
-import { UserRole, Permission, ROLE_PERMISSIONS } from '../types'
+import { ROLE_PERMISSIONS } from '../types'
 import type { AdminUser } from '../types'
 
 interface UseAdminSidebarProps {

@@ -164,7 +164,7 @@ export async function createFirstSuperAdmin(formData: FormData): Promise<AdminAc
     // Utiliser le client admin pour contourner les politiques RLS
     console.log('🔍 [createFirstSuperAdmin] Création/mise à jour du profil superadmin...')
     
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .upsert({
         id: userId,

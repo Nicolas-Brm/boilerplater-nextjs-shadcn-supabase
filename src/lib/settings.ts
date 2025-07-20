@@ -40,7 +40,7 @@ export async function getPublicSettings() {
         acc[setting.key] = setting.value
       }
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     return {
       siteName: settingsMap.site_name || defaultSettings.siteName,

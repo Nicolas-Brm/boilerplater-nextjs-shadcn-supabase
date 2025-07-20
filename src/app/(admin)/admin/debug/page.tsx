@@ -1,265 +1,201 @@
-import { requireAuth } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
+import { debugDatabase } from '@/features/admin/actions/debug'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
-interface UserDebugInfo {
-  id: string
-  email: string
-  emailVerified: boolean
-  createdAt: string
-  lastSignIn?: string
-}
+export default async function AdminDebugPage() {
+  const result = await debugDatabase()
 
-interface ProfileDebugInfo {
-  id: string
-  first_name?: string
-  last_name?: string
-  role?: string
-  [key: string]: unknown
-}
+  if (!result.success) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Debug Base de Données</h1>
+          <p className="text-muted-foreground">
+            Diagnostic des données utilisateurs et super admins
+          </p>
+        </div>
 
-export default async function DebugPage() {
-  const debugInfo: {
-    user: UserDebugInfo | null
-    profile: ProfileDebugInfo | null
-    envVars: {
-      hasServiceRole: boolean
-      hasSiteUrl: boolean
-      hasSupabaseUrl: boolean
-      hasAnonKey: boolean
-    }
-    error: string | null
-  } = {
-    user: null,
-    profile: null,  
-    envVars: {
-      hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasSiteUrl: !!process.env.NEXT_PUBLIC_SITE_URL,
-      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    },
-    error: null
+        <Alert variant="destructive">
+          <AlertDescription>
+            Erreur lors de la récupération des données : {result.error}
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
-  try {
-    // Récupérer l'utilisateur connecté
-    const user = await requireAuth()
-    debugInfo.user = {
-      id: user.id,
-      email: user.email || '',
-      emailVerified: !!user.email_confirmed_at,
-      createdAt: user.created_at || '',
-      lastSignIn: user.last_sign_in_at || undefined
-    }
+  const { data } = result
 
-    // Récupérer le profil utilisateur
-    const supabase = await createClient()
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Debug Base de Données</h1>
+          <p className="text-muted-foreground">
+            Diagnostic des données utilisateurs et super admins
+          </p>
+        </div>
 
-    if (profileError) {
-      debugInfo.error = `Erreur profil: ${profileError.message}`
-    } else {
-      debugInfo.profile = profile
-    }
-
-  } catch (error) {
-    debugInfo.error = error instanceof Error ? error.message : 'Erreur inconnue'
+        <Alert variant="destructive">
+          <AlertDescription>
+            Aucune donnée disponible
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Debug Information</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Debug Base de Données</h1>
         <p className="text-muted-foreground">
-          Informations de débogage pour diagnostiquer les problèmes
+          Diagnostic des données utilisateurs et super admins
         </p>
       </div>
 
-      {/* Variables d'environnement */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Utilisateurs Auth</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.authUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Dans auth.users
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Profils Utilisateurs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.profiles}</div>
+            <p className="text-xs text-muted-foreground">
+              Dans user_profiles
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Super Admins</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.superAdmins}</div>
+            <p className="text-xs text-muted-foreground">
+              Tous les super admins
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Super Admins Actifs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.activeSuperAdmins}</div>
+            <p className="text-xs text-muted-foreground">
+              Actifs uniquement
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Détails des utilisateurs auth */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
-            Variables d'environnement
-          </CardTitle>
+          <CardTitle>Utilisateurs dans auth.users</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span>SUPABASE_SERVICE_ROLE_KEY</span>
-            {debugInfo.envVars.hasServiceRole ? (
-              <Badge variant="default" className="bg-green-500">Configurée</Badge>
-            ) : (
-              <Badge variant="destructive">Manquante</Badge>
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span>NEXT_PUBLIC_SITE_URL</span>
-            {debugInfo.envVars.hasSiteUrl ? (
-              <Badge variant="default" className="bg-green-500">Configurée</Badge>
-            ) : (
-              <Badge variant="secondary">Optionnelle</Badge>
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span>NEXT_PUBLIC_SUPABASE_URL</span>
-            {debugInfo.envVars.hasSupabaseUrl ? (
-              <Badge variant="default" className="bg-green-500">Configurée</Badge>
-            ) : (
-              <Badge variant="destructive">Manquante</Badge>
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span>NEXT_PUBLIC_SUPABASE_ANON_KEY</span>
-            {debugInfo.envVars.hasAnonKey ? (
-              <Badge variant="default" className="bg-green-500">Configurée</Badge>
-            ) : (
-              <Badge variant="destructive">Manquante</Badge>
-            )}
-          </div>
+        <CardContent>
+          {data.authUsersDetails.length === 0 ? (
+            <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
+          ) : (
+            <div className="space-y-2">
+              {data.authUsersDetails.map((user: any) => (
+                <div key={user.id} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <span className="font-medium">{user.email}</span>
+                    <span className="text-sm text-muted-foreground ml-2">({user.id})</span>
+                  </div>
+                  <Badge variant={user.confirmed ? 'default' : 'secondary'}>
+                    {user.confirmed ? 'Confirmé' : 'Non confirmé'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Erreur générale */}
-      {debugInfo.error && (
-        <Alert variant="destructive">
-          <XCircle className="h-4 w-4" />
-          <AlertDescription>{debugInfo.error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Informations utilisateur */}
-      {debugInfo.user && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Utilisateur connecté
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-medium">ID:</span>
-                <p className="text-sm text-muted-foreground font-mono">{debugInfo.user.id}</p>
-              </div>
-              <div>
-                <span className="font-medium">Email:</span>
-                <p className="text-sm text-muted-foreground">{debugInfo.user.email}</p>
-              </div>
-              <div>
-                <span className="font-medium">Email vérifié:</span>
-                <p className="text-sm text-muted-foreground">
-                  {debugInfo.user.emailVerified ? 'Oui' : 'Non'}
-                </p>
-              </div>
-              <div>
-                <span className="font-medium">Créé le:</span>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(debugInfo.user.createdAt).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Profil utilisateur */}
-      {debugInfo.profile ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Profil utilisateur
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-medium">Prénom:</span>
-                <p className="text-sm text-muted-foreground">{debugInfo.profile.first_name || 'Non défini'}</p>
-              </div>
-              <div>
-                <span className="font-medium">Nom:</span>
-                <p className="text-sm text-muted-foreground">{debugInfo.profile.last_name || 'Non défini'}</p>
-              </div>
-              <div>
-                <span className="font-medium">Rôle:</span>
-                <Badge variant={
-                  debugInfo.profile.role === 'super_admin' ? 'default' :
-                  debugInfo.profile.role === 'admin' ? 'secondary' :
-                  debugInfo.profile.role === 'moderator' ? 'outline' : 
-                  'destructive'
-                }>
-                  {debugInfo.profile.role}
-                </Badge>
-              </div>
-              <div>
-                <span className="font-medium">Actif:</span>
-                <p className="text-sm text-muted-foreground">
-                  {debugInfo.profile.is_active ? 'Oui' : 'Non'}
-                </p>
-              </div>
-            </div>
-
-            {/* Recommandations */}
-            {debugInfo.profile.role === 'user' && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Votre compte a le rôle "user". Pour accéder à l'interface admin, vous devez être promu au rôle "admin" ou "super_admin".
-                  <br />
-                  Exécutez cette commande SQL dans Supabase : <code>SELECT promote_user_to_admin('{debugInfo.user?.email}');</code>
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      ) : debugInfo.user && (
-        <Alert variant="destructive">
-          <XCircle className="h-4 w-4" />
-          <AlertDescription>
-            Aucun profil trouvé dans la table user_profiles. 
-            Vous devez créer un profil ou exécuter les migrations de base de données.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Instructions */}
+      {/* Détails des profils */}
       <Card>
         <CardHeader>
-          <CardTitle>Instructions pour résoudre les problèmes</CardTitle>
+          <CardTitle>Profils dans user_profiles</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-medium">1. Configurer SUPABASE_SERVICE_ROLE_KEY</h4>
-            <p className="text-sm text-muted-foreground">
-              Ajoutez cette variable dans votre fichier .env.local avec la clé service_role de votre projet Supabase.
-            </p>
-          </div>
-          
-          <div>
-            <h4 className="font-medium">2. Promouvoir votre compte admin</h4>
-            <p className="text-sm text-muted-foreground">
-              Exécutez cette commande SQL dans l'éditeur SQL de Supabase :
-            </p>
-            <code className="block mt-1 p-2 bg-muted rounded text-sm">
-              SELECT promote_user_to_admin('{debugInfo.user?.email}');
-            </code>
-          </div>
+        <CardContent>
+          {data.profilesDetails.length === 0 ? (
+            <p className="text-muted-foreground">Aucun profil trouvé</p>
+          ) : (
+            <div className="space-y-2">
+              {data.profilesDetails.map((profile: any) => (
+                <div key={profile.id} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <span className="font-medium">{profile.email || 'Pas d\'email'}</span>
+                    <span className="text-sm text-muted-foreground ml-2">({profile.id})</span>
+                    <div className="text-sm text-muted-foreground">
+                      {profile.first_name} {profile.last_name}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">{profile.role}</Badge>
+                    <Badge variant={profile.is_active ? 'default' : 'secondary'}>
+                      {profile.is_active ? 'Actif' : 'Inactif'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-          <div>
-            <h4 className="font-medium">3. Créer la table user_profiles</h4>
-            <p className="text-sm text-muted-foreground">
-              Si la table n'existe pas, exécutez les migrations SQL fournies dans le README.
-            </p>
-          </div>
+      {/* Super admins spécifiquement */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Super Admins Détaillés</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.superAdminsDetails.length === 0 ? (
+            <Alert>
+              <AlertDescription>
+                ❌ Aucun super admin trouvé ! C'est pourquoi vous êtes redirigé vers l'onboarding.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-2">
+              {data.superAdminsDetails.map((admin: any) => (
+                <div key={admin.id} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <span className="font-medium">{admin.email || 'Pas d\'email'}</span>
+                    <span className="text-sm text-muted-foreground ml-2">({admin.id})</span>
+                    <div className="text-sm text-muted-foreground">
+                      {admin.first_name} {admin.last_name}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">SUPER_ADMIN</Badge>
+                    <Badge variant={admin.is_active ? 'default' : 'destructive'}>
+                      {admin.is_active ? 'Actif' : 'Inactif'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

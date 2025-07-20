@@ -5,7 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { type ActionResult } from '../types'
 
 export async function logoutSimple(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _prevState: ActionResult | null, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _formData?: FormData
 ): Promise<ActionResult> {
   const supabase = await createClient()

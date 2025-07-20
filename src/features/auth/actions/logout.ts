@@ -29,7 +29,10 @@ export async function logout(): Promise<ActionResult> {
   }
 }
 
-export async function logoutAction(_formData: FormData): Promise<void> {
+export async function logoutAction(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _formData: FormData
+): Promise<void> {
   const supabase = await createClient()
 
   try {

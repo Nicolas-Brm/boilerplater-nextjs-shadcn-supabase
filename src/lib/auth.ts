@@ -24,6 +24,7 @@ export async function requireAuthAPI(request?: Request): Promise<User | null> {
   try {
     console.log('🔍 [requireAuthAPI] Création du client Supabase pour API...')
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let cookieStore: any
     
     if (request) {
@@ -82,7 +83,7 @@ export async function requireAuthAPI(request?: Request): Promise<User | null> {
                 cookiesToSet.forEach(({ name, value, options }) => {
                   cookieStore.set(name, value, options)
                 })
-              } catch (error) {
+              } catch {
                 // ignore les erreurs de cookies en API route
               }
             },
@@ -128,6 +129,7 @@ export async function requireNoAuth(): Promise<void> {
     } catch (error) {
       // Ignorer les erreurs de redirection Next.js qui sont normales
       if (error && typeof error === 'object' && 'digest' in error && 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (error as any).digest?.includes('NEXT_REDIRECT')) {
         throw error
       }

@@ -1,24 +1,17 @@
 import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
 import { requireAdmin } from '@/features/admin/lib/permissions'
 import { Permission } from '@/features/admin/types'
 import { 
-  getSystemSettings, 
-  toggleMaintenanceMode, 
-  resetSettings, 
-  exportSettings 
+  getSystemSettings
 } from '@/features/admin/actions'
 import { SystemSettingsForm, SettingsActions } from '@/features/admin/components'
 import { 
   Settings, 
   AlertTriangle, 
   Shield, 
-  Download,
-  RefreshCw,
   Power,
   Server,
   Globe,

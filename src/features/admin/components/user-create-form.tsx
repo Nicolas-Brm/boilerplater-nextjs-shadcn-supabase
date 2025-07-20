@@ -27,6 +27,7 @@ export function UserCreateForm({ onSuccess }: UserCreateFormProps) {
   const router = useRouter()
   
   // Wrapper function for createUser to add isActive value
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const createUserAction = async (prevState: any, formData: FormData) => {
     // Add the isActive value explicitly to formData
     formData.set('isActive', isActive.toString())

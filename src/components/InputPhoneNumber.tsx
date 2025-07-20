@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useId, useState, forwardRef } from "react"
-import { ChevronDownIcon, PhoneIcon, CheckIcon, AlertCircleIcon } from "lucide-react"
+import { PhoneIcon, CheckIcon, AlertCircleIcon } from "lucide-react"
 import * as RPNInput from "react-phone-number-input"
 import flags from "react-phone-number-input/flags"
 
@@ -51,7 +51,8 @@ const InputPhoneNumber = forwardRef<HTMLInputElement, InputPhoneNumberProps>(
     validator,
     ...props
   }, ref) => {
-    const id = propId || useId()
+    const generatedId = useId()
+    const id = propId || generatedId
     const [isFocused, setIsFocused] = useState(false)
     const [isValid, setIsValid] = useState<boolean | null>(null)
 
@@ -110,7 +111,11 @@ const InputPhoneNumber = forwardRef<HTMLInputElement, InputPhoneNumberProps>(
             international
             flagComponent={FlagComponent}
             countrySelectComponent={CountrySelect}
-            inputComponent={PhoneInput}
+            inputComponent={React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+              function InputComponent(props, inputRef) {
+                return <PhoneInput {...props} ref={inputRef || ref} />
+              }
+            )}
             id={id}
             name={name}
             placeholder={placeholder}
