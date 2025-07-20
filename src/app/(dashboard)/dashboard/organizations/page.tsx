@@ -4,6 +4,7 @@ import { Building2, Users, Settings } from 'lucide-react'
 import { CreateOrganizationForm } from '@/features/organization/components/create-organization-form'
 import { MembersManagement } from '@/features/organization/components/members-management'
 import { OrganizationSettingsForm } from '@/features/organization/components/organization-settings-form'
+import { getCurrentUserOrganization } from '@/features/organization/actions'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -96,15 +97,24 @@ export default function OrganizationsPage() {
 
 // Composant wrapper pour récupérer l'organisation et passer les props
 async function OrganizationMembersWrapper() {
-  // TODO: Récupérer l'organisation de l'utilisateur
-  // Pour l'instant, on utilise un ID factice
-  const organizationId = "temp-org-id"
-  const userRole = "owner"
+  const { organization, membership } = await getCurrentUserOrganization()
+  
+  if (!organization || !membership) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Aucune organisation</h3>
+        <p className="text-muted-foreground">
+          Créez d'abord une organisation dans l'onglet "Vue d'ensemble" pour gérer les membres.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <MembersManagement 
-      organizationId={organizationId} 
-      userRole={userRole} 
+      organizationId={organization.id} 
+      userRole={membership.role} 
     />
   )
 }

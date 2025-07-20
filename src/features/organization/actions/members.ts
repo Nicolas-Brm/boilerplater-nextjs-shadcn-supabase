@@ -15,16 +15,10 @@ import { getCurrentUser } from '@/lib/auth'
 export async function getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
   const supabase = await createClient()
   
+  // Récupérer d'abord les membres
   const { data: members, error } = await supabase
     .from('organization_members')
-    .select(`
-      *,
-      user_profiles!inner(
-        id,
-        first_name,
-        last_name
-      )
-    `)
+    .select('*')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
     .order('joined_at', { ascending: false })
@@ -34,21 +28,37 @@ export async function getOrganizationMembers(organizationId: string): Promise<Or
     return []
   }
 
-  return members.map(member => ({
-    id: member.id,
-    organizationId: member.organization_id,
-    userId: member.user_id,
-    role: member.role as OrganizationRole,
-    isActive: member.is_active,
-    joinedAt: member.joined_at,
-    invitedBy: member.invited_by,
-    user: {
-      id: member.user_profiles.id,
-      email: '', // Sera récupéré séparément pour la sécurité
-      firstName: member.user_profiles.first_name,
-      lastName: member.user_profiles.last_name,
+  if (!members || members.length === 0) {
+    return []
+  }
+
+  // Récupérer les profils utilisateur séparément
+  const userIds = members.map(member => member.user_id)
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('id, first_name, last_name')
+    .in('id', userIds)
+
+  // Combiner les données
+  return members.map(member => {
+    const profile = profiles?.find(p => p.id === member.user_id)
+    
+    return {
+      id: member.id,
+      organizationId: member.organization_id,
+      userId: member.user_id,
+      role: member.role as OrganizationRole,
+      isActive: member.is_active,
+      joinedAt: member.joined_at,
+      invitedBy: member.invited_by,
+      user: {
+        id: member.user_id,
+        email: '', // Sera récupéré séparément pour la sécurité
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+      }
     }
-  }))
+  })
 }
 
 // Inviter un nouveau membre
