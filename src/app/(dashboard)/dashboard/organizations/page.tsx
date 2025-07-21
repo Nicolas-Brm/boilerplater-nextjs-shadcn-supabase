@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CreateOrganizationForm, CreateOrganizationModal, MembersManagement, LeaveOrganizationButton, DeleteOrganizationDialog, OrganizationDataProvider, OrganizationAwareWrapper } from '@/features/organization/components'
+import { CreateOrganizationForm, CreateOrganizationModal, MembersManagementWrapper, LeaveOrganizationButtonWrapper, DeleteOrganizationDialog, OrganizationDataProvider, OrganizationAwareWrapper, OrganizationSettingsForm } from '@/features/organization/components'
 import { getCurrentOrganization } from '@/features/organization/actions/get-current-organization'
 
 function OrganizationSkeleton() {
@@ -40,7 +40,7 @@ export default async function OrganizationsPage({ searchParams }: OrganizationPa
   return (
     <OrganizationDataProvider>
       <OrganizationAwareWrapper>
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="h-8 w-20 bg-muted animate-pulse rounded" />}>
           <CreateOrganizationModal />
         </Suspense>
         <div className="flex items-center justify-between space-y-2">
@@ -216,13 +216,17 @@ async function OrganizationDangerZone({ organizationSlug }: { organizationSlug?:
               Supprime définitivement votre membership. Vous devrez être réinvité pour rejoindre à nouveau.
             </p>
           </div>
-          <LeaveOrganizationButton
-            organizationId={organization.id}
-            organizationName={organization.name}
-            userRole={membership.role}
-            variant="destructive"
-            size="sm"
-          />
+          {organizationSlug && (
+            <Suspense fallback={<div className="h-8 w-20 bg-muted animate-pulse rounded" />}>
+              <LeaveOrganizationButtonWrapper
+                organizationSlug={organizationSlug}
+                organizationName={organization.name}
+                userRole={membership.role}
+                variant="destructive"
+                size="sm"
+              />
+            </Suspense>
+          )}
         </div>
         
         {membership.role === 'owner' && (
@@ -261,11 +265,25 @@ async function OrganizationMembersWrapper({ organizationSlug }: { organizationSl
     )
   }
 
+  if (!organizationSlug) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Slug d'organisation manquant</h3>
+        <p className="text-muted-foreground">
+          Impossible de charger les membres sans le slug de l'organisation.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <MembersManagement 
-      organizationId={organization.id} 
-      userRole={membership.role} 
-    />
+    <Suspense fallback={<OrganizationSkeleton />}>
+      <MembersManagementWrapper 
+        organizationSlug={organizationSlug}
+        userRole={membership.role} 
+      />
+    </Suspense>
   )
 }
 
@@ -285,20 +303,15 @@ async function OrganizationSettingsWrapper({ organizationSlug }: { organizationS
     )
   }
 
+  const canEdit = ['owner', 'admin'].includes(membership.role)
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Paramètres de l'organisation</CardTitle>
-        <CardDescription>
-          Configurez les paramètres de {organization.name}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Les paramètres d'organisation seront implémentés dans une prochaine version.
-        </p>
-      </CardContent>
-    </Card>
+    <div>
+      <OrganizationSettingsForm 
+        organization={organization}
+        canEdit={canEdit}
+      />
+    </div>
   )
 }
 

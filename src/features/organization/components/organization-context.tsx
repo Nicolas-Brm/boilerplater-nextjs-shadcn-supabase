@@ -74,6 +74,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     // Stocker le slug de l'organisation sélectionnée dans le localStorage pour la persistance
     try {
       localStorage.setItem('selectedOrganizationSlug', organization.slug)
+      // Nettoyer l'ancien système d'ID si présent
+      localStorage.removeItem('selectedOrganizationId')
     } catch (error) {
       console.warn('Impossible de sauvegarder l\'organisation dans localStorage:', error)
     }
@@ -92,6 +94,12 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       let selectedOrgSlug: string | null = null
       try {
         selectedOrgSlug = localStorage.getItem('selectedOrganizationSlug')
+        
+        // Nettoyer l'ancien système d'ID si présent
+        const oldOrgId = localStorage.getItem('selectedOrganizationId')
+        if (oldOrgId && !selectedOrgSlug) {
+          localStorage.removeItem('selectedOrganizationId')
+        }
       } catch (error) {
         console.warn('Impossible de lire localStorage:', error)
       }
@@ -123,6 +131,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         setCurrentOrganization(null)
         try {
           localStorage.removeItem('selectedOrganizationSlug')
+          localStorage.removeItem('selectedOrganizationId') // Nettoyer aussi l'ancien
         } catch (error) {
           console.warn('Impossible de nettoyer localStorage:', error)
         }

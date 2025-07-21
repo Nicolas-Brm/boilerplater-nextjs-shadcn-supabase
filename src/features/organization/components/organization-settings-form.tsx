@@ -1,288 +1,314 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useActionState } from 'react'
+import { useState } from 'react'
+import { Building2, Globe, Mail, MapPin, Phone, Save, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Building2, 
-  Shield, 
-  Globe, 
-  Clock, 
-  Lock, 
-  Settings,
-  AlertCircle,
-  Key,
-  Webhook,
-  AlertTriangle,
-  Trash2
-} from 'lucide-react'
-import { getUserPrimaryOrganization } from '../actions/settings'
-import { getOrganizationSettings } from '../actions/settings'
-import { CreateOrganizationForm } from './create-organization-form'
-import { DeleteOrganizationDialog } from './delete-organization-dialog'
+import { Badge } from '@/components/ui/badge'
+import { updateOrganizationSettings } from '../actions/settings'
+import { type Organization } from '../types'
 
-export function OrganizationSettingsForm() {
-  const [organization, setOrganization] = useState<any>(null)
-  const [settings, setSettings] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [hasOrganization, setHasOrganization] = useState(false)
+interface OrganizationSettingsFormProps {
+  organization: Organization
+  canEdit: boolean
+}
 
-  useEffect(() => {
-    getUserPrimaryOrganization().then((org) => {
-      if (org) {
-        setOrganization(org)
-        setHasOrganization(true)
-        getOrganizationSettings(org.id).then(setSettings)
-      }
-      setLoading(false)
-    })
-  }, [])
+const initialState = {
+  success: false,
+  errors: {},
+  error: undefined,
+  data: undefined
+}
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-4 bg-muted animate-pulse rounded" />
-        <div className="h-10 bg-muted animate-pulse rounded" />
-        <div className="h-10 bg-muted animate-pulse rounded" />
-      </div>
-    )
+export function OrganizationSettingsForm({ organization, canEdit }: OrganizationSettingsFormProps) {
+  const [state, formAction] = useActionState(updateOrganizationSettings, initialState)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (formData: FormData) => {
+    setIsSubmitting(true)
+    formAction(formData)
+    setIsSubmitting(false)
   }
 
-  if (!hasOrganization) {
-    return <CreateOrganizationForm />
-  }
+  // Extraire le message de success depuis data
+  const successMessage = state.success && state.data ? (state.data as any).message : null
+  const errorMessage = state.error
 
   return (
     <div className="space-y-6">
-      {/* Informations sur l'organisation */}
+      {/* Informations générales */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            {organization.name}
+            Informations générales
           </CardTitle>
           <CardDescription>
-            Plan: {organization.planType} • Rôle: {organization.userRole}
+            Configurez les informations de base de votre organisation
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <Label className="text-muted-foreground">Slug</Label>
-              <p className="font-mono">{organization.slug}</p>
-            </div>
-            <div>
-              <Label className="text-muted-foreground">Créée le</Label>
-              <p>{new Date(organization.createdAt).toLocaleDateString('fr-FR')}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <form action={handleSubmit} className="space-y-6">
+            <input type="hidden" name="organizationId" value={organization.id} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Nom de l'organisation *
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Mon Entreprise"
+                  defaultValue={organization.name}
+                  disabled={!canEdit}
+                  aria-invalid={state.errors?.name ? 'true' : 'false'}
+                />
+                {state.errors?.name && (
+                  <p className="text-sm text-destructive">
+                    {state.errors.name[0]}
+                  </p>
+                )}
+              </div>
 
-      {/* Paramètres généraux */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Paramètres généraux
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="defaultLanguage" className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                Langue par défaut
-              </Label>
-              <Select name="defaultLanguage" defaultValue={settings?.defaultLanguage || 'fr'}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir la langue" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="defaultTimezone">Fuseau horaire par défaut</Label>
-              <Select name="defaultTimezone" defaultValue={settings?.defaultTimezone || 'Europe/Paris'}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir le fuseau horaire" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Europe/Paris">Europe/Paris (GMT+1)</SelectItem>
-                  <SelectItem value="Europe/London">Europe/London (GMT+0)</SelectItem>
-                  <SelectItem value="America/New_York">America/New_York (GMT-5)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Paramètres de sécurité */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Sécurité de l'organisation
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Authentification à deux facteurs obligatoire
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Forcer tous les membres à activer l'A2F
-              </p>
-            </div>
-            <Switch 
-              id="enforce2fa" 
-              name="enforce2fa" 
-              defaultChecked={settings?.enforce2fa || false}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sessionTimeoutHours" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Délai d'expiration des sessions (heures)
-              </Label>
-              <Select name="sessionTimeoutHours" defaultValue={settings?.sessionTimeoutHours?.toString() || '24'}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir le délai" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 heure</SelectItem>
-                  <SelectItem value="8">8 heures</SelectItem>
-                  <SelectItem value="24">24 heures</SelectItem>
-                  <SelectItem value="168">1 semaine</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="passwordMinLength">Longueur minimale du mot de passe</Label>
-              <Select name="passwordMinLength" defaultValue={settings?.passwordMinLength?.toString() || '8'}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir la longueur" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="8">8 caractères</SelectItem>
-                  <SelectItem value="12">12 caractères</SelectItem>
-                  <SelectItem value="16">16 caractères</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Intégrations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Intégrations et API
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="flex items-center gap-2">
-                <Key className="h-4 w-4" />
-                Accès API activé
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Permettre l'accès à l'API pour les intégrations externes
-              </p>
-            </div>
-            <Switch 
-              id="apiEnabled" 
-              name="apiEnabled" 
-              defaultChecked={settings?.apiEnabled || false}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="flex items-center gap-2">
-                <Webhook className="h-4 w-4" />
-                Webhooks activés
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Permettre l'envoi de webhooks pour les événements
-              </p>
-            </div>
-            <Switch 
-              id="webhookEnabled" 
-              name="webhookEnabled" 
-              defaultChecked={settings?.webhookEnabled || false}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {organization?.userRole === 'owner' && (
-        <div className="flex justify-end">
-          <Button type="submit" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Sauvegarder les paramètres
-          </Button>
-        </div>
-      )}
-
-      {organization?.userRole !== 'owner' && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Seuls les propriétaires de l'organisation peuvent modifier ces paramètres.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Zone de danger - Suppression */}
-      {organization?.userRole === 'owner' && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Zone de danger
-            </CardTitle>
-            <CardDescription>
-              Actions irréversibles sur votre organisation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start justify-between p-4 border border-destructive/20 rounded-lg">
-              <div className="space-y-1">
-                <h4 className="font-medium text-destructive">Supprimer l'organisation</h4>
-                <p className="text-sm text-muted-foreground">
-                  Supprime définitivement l'organisation et toutes les données associées.
-                  Cette action ne peut pas être annulée.
+              <div className="space-y-2">
+                <Label htmlFor="slug">
+                  Slug de l'organisation *
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="slug"
+                    name="slug"
+                    placeholder="mon-entreprise"
+                    defaultValue={organization.slug}
+                    disabled={!canEdit}
+                    aria-invalid={state.errors?.slug ? 'true' : 'false'}
+                    className="font-mono"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <Badge variant="secondary" className="text-xs">
+                      URL
+                    </Badge>
+                  </div>
+                </div>
+                {state.errors?.slug && (
+                  <p className="text-sm text-destructive">
+                    {state.errors.slug[0]}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Le slug apparaît dans l'URL : /dashboard?org=<span className="font-mono">{organization.slug}</span>
                 </p>
               </div>
-              <DeleteOrganizationDialog organization={organization}>
-                <Button variant="destructive" size="sm" className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Supprimer
-                </Button>
-              </DeleteOrganizationDialog>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Décrivez votre organisation..."
+                defaultValue={organization.description || ''}
+                disabled={!canEdit}
+                rows={3}
+                aria-invalid={state.errors?.description ? 'true' : 'false'}
+              />
+              {state.errors?.description && (
+                <p className="text-sm text-destructive">
+                  {state.errors.description[0]}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Informations de contact */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Informations de contact
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="website">
+                    <Globe className="h-4 w-4 inline mr-1" />
+                    Site web
+                  </Label>
+                  <Input
+                    id="website"
+                    name="website"
+                    type="url"
+                    placeholder="https://www.monentreprise.com"
+                    defaultValue={organization.website || ''}
+                    disabled={!canEdit}
+                    aria-invalid={state.errors?.website ? 'true' : 'false'}
+                  />
+                  {state.errors?.website && (
+                    <p className="text-sm text-destructive">
+                      {state.errors.website[0]}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    <Mail className="h-4 w-4 inline mr-1" />
+                    Email de contact
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="contact@monentreprise.com"
+                    defaultValue=""
+                    disabled={!canEdit}
+                    aria-invalid={state.errors?.email ? 'true' : 'false'}
+                  />
+                  {state.errors?.email && (
+                    <p className="text-sm text-destructive">
+                      {state.errors.email[0]}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">
+                    <Phone className="h-4 w-4 inline mr-1" />
+                    Téléphone
+                  </Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+33 1 23 45 67 89"
+                    defaultValue=""
+                    disabled={!canEdit}
+                    aria-invalid={state.errors?.phone ? 'true' : 'false'}
+                  />
+                  {state.errors?.phone && (
+                    <p className="text-sm text-destructive">
+                      {state.errors.phone[0]}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">
+                    <MapPin className="h-4 w-4 inline mr-1" />
+                    Adresse
+                  </Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    placeholder="123 rue de la Paix, 75001 Paris"
+                    defaultValue=""
+                    disabled={!canEdit}
+                    aria-invalid={state.errors?.address ? 'true' : 'false'}
+                  />
+                  {state.errors?.address && (
+                    <p className="text-sm text-destructive">
+                      {state.errors.address[0]}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Messages de feedback */}
+            {successMessage && (
+              <Alert>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            )}
+
+            {errorMessage && (
+              <Alert variant="destructive">
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Boutons d'action */}
+            {canEdit && (
+              <div className="flex justify-end gap-2">
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Enregistrer les modifications
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {!canEdit && (
+              <Alert>
+                <AlertDescription>
+                  Vous n'avez pas les permissions nécessaires pour modifier ces paramètres.
+                  Contactez le propriétaire de l'organisation.
+                </AlertDescription>
+              </Alert>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Informations du plan */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Plan et abonnement</CardTitle>
+          <CardDescription>
+            Informations sur votre plan actuel et les limites
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Plan actuel</p>
+              <Badge variant="secondary" className="text-sm">
+                {organization.planType}
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Statut</p>
+              <Badge variant={organization.subscriptionStatus === 'active' ? 'default' : 'destructive'}>
+                {organization.subscriptionStatus === 'active' ? 'Actif' : 'Inactif'}
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Limite de membres</p>
+              <p className="text-lg font-semibold">{organization.maxMembers}</p>
+            </div>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">Créée le</p>
+            <p className="text-sm">
+              {new Date(organization.createdAt).toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

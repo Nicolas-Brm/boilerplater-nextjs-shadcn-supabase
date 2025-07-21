@@ -34,8 +34,8 @@ export function OrganizationSwitcher() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const handleOrganizationSelect = (organizationId: string) => {
-    const selectedOrg = organizations.find(org => org.organization.id === organizationId)?.organization
+  const handleOrganizationSelect = (organizationSlug: string) => {
+    const selectedOrg = organizations.find(org => org.organization.slug === organizationSlug)?.organization
     if (selectedOrg) {
       switchOrganization(selectedOrg)
       setOpen(false)
@@ -124,7 +124,7 @@ export function OrganizationSwitcher() {
                       <CommandItem
                         key={organization.id}
                         value={organization.name}
-                        onSelect={() => handleOrganizationSelect(organization.id)}
+                        onSelect={() => handleOrganizationSelect(organization.slug)}
                         className="flex items-center gap-2"
                       >
                         <Avatar className="h-6 w-6">
