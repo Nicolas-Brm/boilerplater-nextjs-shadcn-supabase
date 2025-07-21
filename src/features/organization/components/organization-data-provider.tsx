@@ -17,8 +17,8 @@ export function OrganizationDataProvider({ children }: OrganizationDataProviderP
     if (currentOrganization) {
       const params = new URLSearchParams(searchParams.toString())
       
-      // Ajouter/mettre à jour le paramètre organizationId
-      params.set('organizationId', currentOrganization.id)
+      // Utiliser le slug au lieu de l'ID
+      params.set('org', currentOrganization.slug)
       
       // Mettre à jour l'URL sans recharger la page
       const newUrl = `${window.location.pathname}?${params.toString()}`

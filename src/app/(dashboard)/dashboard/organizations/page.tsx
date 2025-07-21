@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CreateOrganizationForm, CreateOrganizationModal, MembersManagement, LeaveOrganizationButton, DeleteOrganizationDialog, OrganizationDataProvider } from '@/features/organization/components'
+import { CreateOrganizationForm, CreateOrganizationModal, MembersManagement, LeaveOrganizationButton, DeleteOrganizationDialog, OrganizationDataProvider, OrganizationAwareWrapper } from '@/features/organization/components'
 import { getCurrentOrganization } from '@/features/organization/actions/get-current-organization'
 
 function OrganizationSkeleton() {
@@ -30,7 +30,7 @@ function OrganizationSkeleton() {
 interface OrganizationPageProps {
   searchParams: Promise<{
     create?: string
-    organizationId?: string
+    org?: string
   }>
 }
 
@@ -39,59 +39,61 @@ export default async function OrganizationsPage({ searchParams }: OrganizationPa
   
   return (
     <OrganizationDataProvider>
-      <Suspense fallback={null}>
-        <CreateOrganizationModal />
-      </Suspense>
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Organisations</h2>
-          <p className="text-muted-foreground">
-            Gérez vos organisations et leurs membres
-          </p>
+      <OrganizationAwareWrapper>
+        <Suspense fallback={null}>
+          <CreateOrganizationModal />
+        </Suspense>
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Organisations</h2>
+            <p className="text-muted-foreground">
+              Gérez vos organisations et leurs membres
+            </p>
+          </div>
         </div>
-      </div>
-      
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Vue d'ensemble
-          </TabsTrigger>
-          <TabsTrigger value="members" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Membres
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Paramètres
-          </TabsTrigger>
-        </TabsList>
+        
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Vue d'ensemble
+            </TabsTrigger>
+            <TabsTrigger value="members" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Membres
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Paramètres
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <Suspense fallback={<OrganizationSkeleton />}>
-            <OrganizationOverviewWrapper organizationId={params.organizationId} />
-          </Suspense>
-        </TabsContent>
+          <TabsContent value="overview" className="space-y-6">
+            <Suspense fallback={<OrganizationSkeleton />}>
+              <OrganizationOverviewWrapper organizationSlug={params.org} />
+            </Suspense>
+          </TabsContent>
 
-        <TabsContent value="members" className="space-y-6">
-          <Suspense fallback={<OrganizationSkeleton />}>
-            <OrganizationMembersWrapper organizationId={params.organizationId} />
-          </Suspense>
-        </TabsContent>
+          <TabsContent value="members" className="space-y-6">
+            <Suspense fallback={<OrganizationSkeleton />}>
+              <OrganizationMembersWrapper organizationSlug={params.org} />
+            </Suspense>
+          </TabsContent>
 
-        <TabsContent value="settings" className="space-y-6">
-          <Suspense fallback={<OrganizationSkeleton />}>
-            <OrganizationSettingsWrapper organizationId={params.organizationId} />
-          </Suspense>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="settings" className="space-y-6">
+            <Suspense fallback={<OrganizationSkeleton />}>
+              <OrganizationSettingsWrapper organizationSlug={params.org} />
+            </Suspense>
+          </TabsContent>
+        </Tabs>
+      </OrganizationAwareWrapper>
     </OrganizationDataProvider>
   )
 }
 
 // Composant wrapper pour l'onglet Vue d'ensemble
-async function OrganizationOverviewWrapper({ organizationId }: { organizationId?: string }) {
-  const { organization, membership } = await getCurrentOrganization(organizationId)
+async function OrganizationOverviewWrapper({ organizationSlug }: { organizationSlug?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationSlug)
   
   if (!organization || !membership) {
     return (
@@ -151,6 +153,13 @@ async function OrganizationOverviewWrapper({ organizationId }: { organizationId?
             </div>
           </div>
 
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Slug de l'organisation</p>
+            <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
+              {organization.slug}
+            </p>
+          </div>
+
           {organization.website && (
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Site web</p>
@@ -175,14 +184,14 @@ async function OrganizationOverviewWrapper({ organizationId }: { organizationId?
       </Card>
 
       {/* Zone dangereuse */}
-      <OrganizationDangerZone organizationId={organizationId} />
+      <OrganizationDangerZone organizationSlug={organizationSlug} />
     </div>
   )
 }
 
 // Composant pour la zone dangereuse
-async function OrganizationDangerZone({ organizationId }: { organizationId?: string }) {
-  const { organization, membership } = await getCurrentOrganization(organizationId)
+async function OrganizationDangerZone({ organizationSlug }: { organizationSlug?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationSlug)
   
   if (!organization || !membership) {
     return null
@@ -237,8 +246,8 @@ async function OrganizationDangerZone({ organizationId }: { organizationId?: str
 }
 
 // Composant wrapper pour récupérer l'organisation et passer les props
-async function OrganizationMembersWrapper({ organizationId }: { organizationId?: string }) {
-  const { organization, membership } = await getCurrentOrganization(organizationId)
+async function OrganizationMembersWrapper({ organizationSlug }: { organizationSlug?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationSlug)
   
   if (!organization || !membership) {
     return (
@@ -261,8 +270,8 @@ async function OrganizationMembersWrapper({ organizationId }: { organizationId?:
 }
 
 // Composant wrapper pour les paramètres d'organisation
-async function OrganizationSettingsWrapper({ organizationId }: { organizationId?: string }) {
-  const { organization, membership } = await getCurrentOrganization(organizationId)
+async function OrganizationSettingsWrapper({ organizationSlug }: { organizationSlug?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationSlug)
   
   if (!organization || !membership) {
     return (

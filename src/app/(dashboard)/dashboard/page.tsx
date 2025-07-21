@@ -4,12 +4,12 @@ import { Badge } from '@/components/ui/badge'
 import { Building2 } from 'lucide-react'
 import { requireAuth } from '@/lib/auth'
 import { SystemInfoDisplay } from '@/components/system-info-display'
-import { OrganizationDataProvider } from '@/features/organization/components'
+import { OrganizationDataProvider, OrganizationAwareWrapper, OrganizationAwareTitle } from '@/features/organization/components'
 import { getCurrentOrganization } from '@/features/organization/actions/get-current-organization'
 
 interface DashboardPageProps {
   searchParams: Promise<{
-    organizationId?: string
+    org?: string
   }>
 }
 
@@ -18,39 +18,41 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   
   return (
     <OrganizationDataProvider>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Tableau de bord de votre application
-            </p>
+      <OrganizationAwareWrapper>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <OrganizationAwareTitle title="Dashboard" />
+              <p className="text-muted-foreground">
+                Tableau de bord de votre application
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="col-span-3 space-y-4">
+              {/* Informations de l'organisation courante */}
+              <Suspense fallback={<div className="h-32 bg-muted animate-pulse rounded-lg" />}>
+                <CurrentOrganizationCard organizationSlug={params.org} />
+              </Suspense>
+              
+              {/* Informations système */}
+              <SystemInfoDisplay />
+              
+              {/* Informations du compte */}
+              <Suspense fallback={<div className="h-64 bg-muted animate-pulse rounded-lg" />}>
+                <UserInfoCard />
+              </Suspense>
+            </div>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="col-span-3 space-y-4">
-            {/* Informations de l'organisation courante */}
-            <Suspense fallback={<div className="h-32 bg-muted animate-pulse rounded-lg" />}>
-              <CurrentOrganizationCard organizationId={params.organizationId} />
-            </Suspense>
-            
-            {/* Informations système */}
-            <SystemInfoDisplay />
-            
-            {/* Informations du compte */}
-            <Suspense fallback={<div className="h-64 bg-muted animate-pulse rounded-lg" />}>
-              <UserInfoCard />
-            </Suspense>
-          </div>
-        </div>
-      </div>
+      </OrganizationAwareWrapper>
     </OrganizationDataProvider>
   )
 }
 
-async function CurrentOrganizationCard({ organizationId }: { organizationId?: string }) {
-  const { organization, membership } = await getCurrentOrganization(organizationId)
+async function CurrentOrganizationCard({ organizationSlug }: { organizationSlug?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationSlug)
   
   if (!organization || !membership) {
     return (

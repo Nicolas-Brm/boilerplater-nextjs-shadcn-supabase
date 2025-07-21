@@ -71,9 +71,9 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
   const switchOrganization = (organization: Organization) => {
     setCurrentOrganization(organization)
     
-    // Stocker l'organisation sélectionnée dans le localStorage pour la persistance
+    // Stocker le slug de l'organisation sélectionnée dans le localStorage pour la persistance
     try {
-      localStorage.setItem('selectedOrganizationId', organization.id)
+      localStorage.setItem('selectedOrganizationSlug', organization.slug)
     } catch (error) {
       console.warn('Impossible de sauvegarder l\'organisation dans localStorage:', error)
     }
@@ -88,10 +88,10 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      // Essayer de récupérer l'organisation sélectionnée depuis localStorage
-      let selectedOrgId: string | null = null
+      // Essayer de récupérer le slug de l'organisation sélectionnée depuis localStorage
+      let selectedOrgSlug: string | null = null
       try {
-        selectedOrgId = localStorage.getItem('selectedOrganizationId')
+        selectedOrgSlug = localStorage.getItem('selectedOrganizationSlug')
       } catch (error) {
         console.warn('Impossible de lire localStorage:', error)
       }
@@ -100,10 +100,10 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       setOrganizations(userOrganizations)
 
       if (userOrganizations.length > 0) {
-        // Essayer de trouver l'organisation sélectionnée précédemment
+        // Essayer de trouver l'organisation sélectionnée précédemment par slug
         let selectedOrg = null
-        if (selectedOrgId) {
-          selectedOrg = userOrganizations.find(org => org.organization.id === selectedOrgId)?.organization
+        if (selectedOrgSlug) {
+          selectedOrg = userOrganizations.find(org => org.organization.slug === selectedOrgSlug)?.organization
         }
         
         // Si pas trouvée, prendre la première
@@ -113,16 +113,16 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         
         setCurrentOrganization(selectedOrg)
         
-        // Mettre à jour localStorage avec l'organisation actuelle
+        // Mettre à jour localStorage avec le slug de l'organisation actuelle
         try {
-          localStorage.setItem('selectedOrganizationId', selectedOrg.id)
+          localStorage.setItem('selectedOrganizationSlug', selectedOrg.slug)
         } catch (error) {
           console.warn('Impossible de sauvegarder dans localStorage:', error)
         }
       } else {
         setCurrentOrganization(null)
         try {
-          localStorage.removeItem('selectedOrganizationId')
+          localStorage.removeItem('selectedOrganizationSlug')
         } catch (error) {
           console.warn('Impossible de nettoyer localStorage:', error)
         }
