@@ -21,15 +21,24 @@ export async function getAdminStats(): Promise<AdminActionResult<AdminStats>> {
     
     // Check admin permissions manually
     if (!hasRole(adminUser.role, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MODERATOR])) {
-      throw new Error('Accès admin requis')
+      return {
+        success: false,
+        error: 'Accès admin requis'
+      }
     }
     
     if (!hasPermission(adminUser.role, Permission.VIEW_ANALYTICS)) {
-      throw new Error('Permissions insuffisantes')
+      return {
+        success: false,
+        error: 'Permissions insuffisantes'
+      }
     }
     
     if (!adminUser.isActive) {
-      throw new Error('Compte désactivé')
+      return {
+        success: false,
+        error: 'Compte désactivé'
+      }
     }
 
     const supabase = await createClient()

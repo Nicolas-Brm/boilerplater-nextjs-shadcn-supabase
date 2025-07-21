@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Settings, User, Shield, Bell, Palette, Database, Building2 } from 'lucide-react'
+import { User, Shield, Bell, Palette, Database, Building2 } from 'lucide-react'
 import { ProfileSettingsForm } from '@/features/dashboard/components/profile-settings-form'
 import { SecuritySettingsForm } from '@/features/dashboard/components/security-settings-form'
 import { NotificationSettingsForm } from '@/features/dashboard/components/notification-settings-form'

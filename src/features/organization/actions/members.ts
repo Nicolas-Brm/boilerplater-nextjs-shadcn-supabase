@@ -7,7 +7,8 @@ import {
   UpdateMemberRoleSchema,
   type OrganizationActionResult,
   type OrganizationMember,
-  OrganizationRole 
+  OrganizationRole,
+  InvitationStatus 
 } from '../types'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -146,6 +147,7 @@ export async function inviteMember(
       .select('id')
       .eq('organization_id', organizationId)
       .eq('email', data.email)
+      .eq('status', InvitationStatus.PENDING)
       .gt('expires_at', new Date().toISOString())
       .single()
 
@@ -166,6 +168,7 @@ export async function inviteMember(
         role: data.role,
         message: data.message,
         token: invitationToken,
+        status: InvitationStatus.PENDING,
         expires_at: expiresAt.toISOString(),
         invited_by: user.id
       })
@@ -355,14 +358,14 @@ export async function removeMember(
       }
     }
 
-    // Désactiver le membre plutôt que de le supprimer
-    const { error: updateError } = await supabase
+    // Supprimer complètement le membre de la base de données
+    const { error: deleteError } = await supabase
       .from('organization_members')
-      .update({ is_active: false })
+      .delete()
       .eq('id', memberId)
 
-    if (updateError) {
-      console.error('Erreur lors de la suppression du membre:', updateError)
+    if (deleteError) {
+      console.error('Erreur lors de la suppression du membre:', deleteError)
       return { success: false, error: 'Erreur lors de la suppression du membre' }
     }
 
@@ -386,6 +389,24 @@ export async function removeMember(
   }
 }
 
+// Récupérer l'historique complet des invitations (pour les admins)
+export async function getAllInvitations(organizationId: string) {
+  const supabase = await createClient()
+  
+  const { data: invitations, error } = await supabase
+    .from('organization_invitations')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Erreur lors de la récupération de l\'historique des invitations:', error)
+    return []
+  }
+
+  return invitations
+}
+
 // Récupérer les invitations en attente
 export async function getPendingInvitations(organizationId: string) {
   const supabase = await createClient()
@@ -394,6 +415,7 @@ export async function getPendingInvitations(organizationId: string) {
     .from('organization_invitations')
     .select('*')
     .eq('organization_id', organizationId)
+    .eq('status', InvitationStatus.PENDING)
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
 
@@ -403,6 +425,91 @@ export async function getPendingInvitations(organizationId: string) {
   }
 
   return invitations
+}
+
+// Quitter une organisation (pour l'utilisateur actuel)
+export async function leaveOrganization(
+  organizationId: string
+): Promise<OrganizationActionResult> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return { success: false, error: 'Non authentifié' }
+    }
+
+    const supabase = await createClient()
+
+    // Récupérer le membership de l'utilisateur actuel
+    const { data: currentMembership } = await supabase
+      .from('organization_members')
+      .select('id, role, organization_id')
+      .eq('organization_id', organizationId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single()
+
+    if (!currentMembership) {
+      return { success: false, error: 'Vous n\'êtes pas membre de cette organisation' }
+    }
+
+    // Empêcher le dernier propriétaire de quitter
+    if (currentMembership.role === OrganizationRole.OWNER) {
+      const { count: ownerCount } = await supabase
+        .from('organization_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('role', OrganizationRole.OWNER)
+        .eq('is_active', true)
+
+      if (ownerCount === 1) {
+        return { success: false, error: 'Vous ne pouvez pas quitter l\'organisation car vous êtes le seul propriétaire. Transférez d\'abord la propriété à un autre membre.' }
+      }
+    }
+
+    // Supprimer complètement le membership de la base de données
+    const { error: deleteError } = await supabase
+      .from('organization_members')
+      .delete()
+      .eq('id', currentMembership.id)
+
+    if (deleteError) {
+      console.error('Erreur lors de la sortie de l\'organisation:', deleteError)
+      return { success: false, error: 'Erreur lors de la sortie de l\'organisation' }
+    }
+
+    revalidatePath('/dashboard/organizations')
+    revalidatePath(`/dashboard/organizations/${organizationId}`)
+    
+    return { 
+      success: true, 
+      data: { message: 'Vous avez quitté l\'organisation avec succès' }
+    }
+
+  } catch (error) {
+    console.error('Erreur dans leaveOrganization:', error)
+    return { 
+      success: false, 
+      error: 'Une erreur inattendue est survenue' 
+    }
+  }
+}
+
+// Marquer les invitations expirées
+export async function markExpiredInvitations(organizationId: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('organization_invitations')
+    .update({ status: InvitationStatus.EXPIRED })
+    .eq('organization_id', organizationId)
+    .eq('status', InvitationStatus.PENDING)
+    .lt('expires_at', new Date().toISOString())
+
+  if (error) {
+    console.error('Erreur lors du marquage des invitations expirées:', error)
+  }
+
+  return !error
 }
 
 // Annuler une invitation
@@ -431,10 +538,10 @@ export async function cancelInvitation(
       return { success: false, error: 'Permissions insuffisantes' }
     }
 
-    // Supprimer l'invitation
+    // Marquer l'invitation comme annulée
     const { error } = await supabase
       .from('organization_invitations')
-      .delete()
+      .update({ status: InvitationStatus.CANCELLED })
       .eq('id', invitationId)
       .eq('organization_id', organizationId)
 

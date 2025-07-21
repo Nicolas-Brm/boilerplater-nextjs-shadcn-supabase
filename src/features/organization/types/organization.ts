@@ -21,6 +21,14 @@ export enum SubscriptionStatus {
   EXPIRED = 'expired'
 }
 
+export enum InvitationStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
+  EXPIRED = 'expired',
+  CANCELLED = 'cancelled'
+}
+
 // Schémas de validation
 export const CreateOrganizationSchema = z.object({
   name: z.string().min(1, 'Le nom de l\'organisation est requis').max(100),
@@ -131,9 +139,11 @@ export interface OrganizationInvitation {
   role: OrganizationRole
   message?: string
   token: string
+  status: InvitationStatus
   expiresAt: string
   createdAt: string
   invitedBy: string
+  acceptedAt?: string
   organization: {
     name: string
     logoUrl?: string

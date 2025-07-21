@@ -1,4 +1,6 @@
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getAdminStats } from '@/features/admin/actions'
@@ -145,6 +147,19 @@ export default async function AdminDashboardPage() {
   
   try {
     statsResult = await getAdminStats()
+    
+    // If getAdminStats returns an error result, handle it
+    if (!statsResult.success && statsResult.error === 'Accès admin requis') {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Accès non autorisé</h1>
+          <p className="text-destructive">Vous devez avoir des privilèges administrateur pour accéder à cette page.</p>
+          <Button asChild>
+            <Link href="/dashboard">Retour au tableau de bord</Link>
+          </Button>
+        </div>
+      )
+    }
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error)
     

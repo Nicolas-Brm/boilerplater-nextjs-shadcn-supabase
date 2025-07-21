@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react'
-import { getUserPrimaryOrganization, getOrganizationSettings } from '../actions'
+import { getUserPrimaryOrganization } from '../actions/settings'
+import { getOrganizationSettings } from '../actions/settings'
 import { CreateOrganizationForm } from './create-organization-form'
 import { DeleteOrganizationDialog } from './delete-organization-dialog'
 

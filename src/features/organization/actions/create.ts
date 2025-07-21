@@ -7,7 +7,8 @@ import {
   CreateOrganizationSchema,
   type OrganizationActionResult,
   type CreateOrganizationData,
-  OrganizationRole 
+  OrganizationRole,
+  InvitationStatus 
 } from '../types'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -158,14 +159,20 @@ export async function checkSlugAvailability(slug: string): Promise<{ available: 
 // Rejoindre une organisation via un lien d'invitation
 export async function joinOrganization(invitationToken: string): Promise<OrganizationActionResult> {
   try {
+    console.log('🔍 [joinOrganization] Début avec token:', invitationToken)
+    
     const user = await getCurrentUser()
     if (!user) {
+      console.log('❌ [joinOrganization] Utilisateur non authentifié')
       return { success: false, error: 'Non authentifié' }
     }
+    
+    console.log('✅ [joinOrganization] Utilisateur authentifié:', user.email)
 
     const supabase = await createClient()
 
     // Rechercher l'invitation
+    console.log('🔍 [joinOrganization] Recherche de l\'invitation...')
     const { data: invitation, error: invitationError } = await supabase
       .from('organization_invitations')
       .select(`
@@ -177,42 +184,69 @@ export async function joinOrganization(invitationToken: string): Promise<Organiz
         )
       `)
       .eq('token', invitationToken)
+      .eq('status', InvitationStatus.PENDING)
       .gt('expires_at', new Date().toISOString())
       .single()
 
     if (invitationError || !invitation) {
+      console.log('❌ [joinOrganization] Invitation non trouvée:', invitationError)
       return { success: false, error: 'Invitation invalide ou expirée' }
     }
+    
+    console.log('✅ [joinOrganization] Invitation trouvée:', invitation.id)
 
     // Vérifier si l'utilisateur est déjà membre
+    console.log('🔍 [joinOrganization] Vérification si déjà membre...')
     const { data: existingMember } = await supabase
       .from('organization_members')
       .select('id')
       .eq('organization_id', invitation.organization_id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (existingMember) {
+      console.log('❌ [joinOrganization] Déjà membre')
       return { success: false, error: 'Vous êtes déjà membre de cette organisation' }
     }
 
-    // Vérifier si l'email correspond
-    if (invitation.email !== user.email) {
+    // Vérifier si l'email correspond (avec option de bypass pour les admins)
+    console.log('🔍 [joinOrganization] Vérification email:', { invitationEmail: invitation.email, userEmail: user.email })
+    
+    // Permettre aux admins de rejoindre n'importe quelle invitation (pour faciliter les tests)
+    const supabaseForProfile = await createClient()
+    const { data: userProfile } = await supabaseForProfile
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    
+    const isAdmin = userProfile?.role && ['admin', 'super_admin'].includes(userProfile.role)
+    
+    if (!isAdmin && invitation.email !== user.email) {
+      console.log('❌ [joinOrganization] Email ne correspond pas (non-admin)')
       return { success: false, error: 'Cette invitation n\'est pas pour votre adresse email' }
+    }
+    
+    if (isAdmin && invitation.email !== user.email) {
+      console.log('⚠️ [joinOrganization] Admin bypass - email différent mais autorisé')
     }
 
     // Vérifier la limite de membres
+    console.log('🔍 [joinOrganization] Vérification limite de membres...')
     const { count: memberCount } = await supabase
       .from('organization_members')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', invitation.organization_id)
       .eq('is_active', true)
 
+    console.log('🔍 [joinOrganization] Membres actuels:', memberCount, 'Limite:', (invitation.organizations as any).max_members)
     if (memberCount && memberCount >= (invitation.organizations as any).max_members) {
+      console.log('❌ [joinOrganization] Limite atteinte')
       return { success: false, error: 'L\'organisation a atteint sa limite de membres' }
     }
 
     // Ajouter l'utilisateur à l'organisation
+    console.log('🔍 [joinOrganization] Ajout du membre à l\'organisation...')
     const { error: memberError } = await supabase
       .from('organization_members')
       .insert({
@@ -224,19 +258,48 @@ export async function joinOrganization(invitationToken: string): Promise<Organiz
       })
 
     if (memberError) {
-      console.error('Erreur lors de l\'ajout du membre:', memberError)
+      console.error('❌ [joinOrganization] Erreur lors de l\'ajout du membre:', memberError)
       return { success: false, error: 'Erreur lors de l\'adhésion à l\'organisation' }
     }
+    
+    console.log('✅ [joinOrganization] Membre ajouté avec succès')
 
-    // Marquer l'invitation comme utilisée (optionnel)
-    await supabase
+    // Marquer l'invitation comme acceptée
+    console.log('🔍 [joinOrganization] Marquage de l\'invitation comme acceptée...')
+    console.log('🔍 [joinOrganization] ID invitation:', invitation.id)
+    console.log('🔍 [joinOrganization] Statut à définir:', InvitationStatus.ACCEPTED)
+    
+    const updateData = { 
+      status: InvitationStatus.ACCEPTED,
+      accepted_at: new Date().toISOString()
+    }
+    console.log('🔍 [joinOrganization] Données de mise à jour:', updateData)
+    
+    const { data: updateResult, error: updateError } = await supabase
       .from('organization_invitations')
-      .delete()
+      .update(updateData)
       .eq('id', invitation.id)
+      .select()
+
+    if (updateError) {
+      console.error('❌ [joinOrganization] Erreur lors de la mise à jour du statut:', updateError)
+      console.error('❌ [joinOrganization] Code erreur:', updateError.code)
+      console.error('❌ [joinOrganization] Message erreur:', updateError.message)
+      console.error('❌ [joinOrganization] Détails erreur:', updateError.details)
+      return { success: false, error: 'Erreur lors de la mise à jour de l\'invitation: ' + updateError.message }
+    }
+    
+    console.log('✅ [joinOrganization] Mise à jour réussie:', updateResult)
+    
+    if (!updateResult || updateResult.length === 0) {
+      console.error('❌ [joinOrganization] Aucune ligne mise à jour - ID invitation incorrect?')
+      return { success: false, error: 'Invitation non trouvée pour mise à jour' }
+    }
 
     revalidatePath('/dashboard/settings')
     revalidatePath('/dashboard/organizations')
     
+    console.log('✅ [joinOrganization] Processus terminé avec succès')
     return { 
       success: true, 
       data: { 

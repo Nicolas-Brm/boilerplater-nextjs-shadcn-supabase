@@ -1,14 +1,7 @@
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
-import { AppSidebar } from '@/features/navigation/components'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { SidebarProvider } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/features/navigation/components/app-sidebar'
+import { Toaster } from '@/components/ui/sonner'
+import { OrganizationProvider } from '@/features/organization/components'
 
 export default function DashboardLayout({
   children,
@@ -16,32 +9,16 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <SidebarProvider >
-      <AppSidebar />
-      <SidebarInset className="min-h-screen">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">
-                  Dashboard
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Tableau de bord</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6 space-y-6">
+    <OrganizationProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <main className="flex-1 flex flex-col min-h-screen">
+          <div className="flex-1 flex flex-col space-y-4 p-4 pt-6">
             {children}
           </div>
         </main>
-      </SidebarInset>
-    </SidebarProvider>
+        <Toaster />
+      </SidebarProvider>
+    </OrganizationProvider>
   )
 } 

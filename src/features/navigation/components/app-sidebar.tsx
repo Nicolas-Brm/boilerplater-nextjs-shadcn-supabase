@@ -8,6 +8,7 @@ import {
 import { CollapsibleNavigation } from './collapsible-navigation'
 import { SidebarLogo } from './sidebar-logo'
 import { UserMenu } from '@/features/auth/components/user-menu'
+import { OrganizationSwitcher } from '@/features/organization/components'
 import { navigationConfig } from '../config/navigation'
 import { requireAuth } from '@/lib/auth'
 import { getPublicSettings } from '@/lib/settings'
@@ -23,6 +24,7 @@ export async function AppSidebar() {
       </SidebarHeader>
       
       <SidebarContent>
+        <OrganizationSwitcher />
         <CollapsibleNavigation items={navigationConfig} />
       </SidebarContent>
       

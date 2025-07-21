@@ -58,4 +58,15 @@ export async function getCurrentUserOrganization(): Promise<UserOrganizationData
     console.error('Erreur lors de la récupération de l\'organisation:', error)
     return { organization: null, membership: null }
   }
+}
+
+// Cette fonction retourne directement l'organisation principale de l'utilisateur sans les détails d'adhésion
+export async function getUserPrimaryOrganization(): Promise<Organization | null> {
+  try {
+    const result = await getCurrentUserOrganization()
+    return result.organization
+  } catch (error) {
+    console.error('Erreur dans getUserPrimaryOrganization:', error)
+    return null
+  }
 } 

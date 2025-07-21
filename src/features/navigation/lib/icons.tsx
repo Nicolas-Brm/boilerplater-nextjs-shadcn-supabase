@@ -19,6 +19,7 @@ const iconMap: Record<string, LucideIcon> = {
   Shield: Icons.Shield,
   Folder: Icons.Folder,
   File: Icons.File,
+  Building2: Icons.Building2,
 }
 
 interface IconProps {

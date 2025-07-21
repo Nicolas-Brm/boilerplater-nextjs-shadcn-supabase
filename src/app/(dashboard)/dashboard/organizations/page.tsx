@@ -1,29 +1,47 @@
 import { Suspense } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Building2, Users, Settings, Trash2 } from 'lucide-react'
-import { CreateOrganizationForm } from '@/features/organization/components/create-organization-form'
-import { MembersManagement } from '@/features/organization/components/members-management'
-import { OrganizationSettingsForm } from '@/features/organization/components/organization-settings-form'
-import { DeleteOrganizationDialog } from '@/features/organization/components/delete-organization-dialog'
-import { getCurrentUserOrganization } from '@/features/organization/actions'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { CreateOrganizationForm, CreateOrganizationModal, MembersManagement, LeaveOrganizationButton, DeleteOrganizationDialog, OrganizationDataProvider } from '@/features/organization/components'
+import { getCurrentOrganization } from '@/features/organization/actions/get-current-organization'
 
 function OrganizationSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-8 w-48" />
-      <div className="grid gap-4">
-        <Skeleton className="h-96 w-full" />
-      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
-export default function OrganizationsPage() {
+interface OrganizationPageProps {
+  searchParams: Promise<{
+    create?: string
+    organizationId?: string
+  }>
+}
+
+export default async function OrganizationsPage({ searchParams }: OrganizationPageProps) {
+  const params = await searchParams
+  
   return (
-    <>
+    <OrganizationDataProvider>
+      <Suspense fallback={null}>
+        <CreateOrganizationModal />
+      </Suspense>
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Organisations</h2>
@@ -51,42 +69,29 @@ export default function OrganizationsPage() {
 
         <TabsContent value="overview" className="space-y-6">
           <Suspense fallback={<OrganizationSkeleton />}>
-            <OrganizationOverviewWrapper />
+            <OrganizationOverviewWrapper organizationId={params.organizationId} />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="members" className="space-y-6">
           <Suspense fallback={<OrganizationSkeleton />}>
-            <OrganizationMembersWrapper />
+            <OrganizationMembersWrapper organizationId={params.organizationId} />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Paramètres de l'organisation
-              </CardTitle>
-              <CardDescription>
-                Configurez les paramètres de votre organisation
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<OrganizationSkeleton />}>
-                <OrganizationSettingsForm />
-              </Suspense>
-            </CardContent>
-          </Card>
+          <Suspense fallback={<OrganizationSkeleton />}>
+            <OrganizationSettingsWrapper organizationId={params.organizationId} />
+          </Suspense>
         </TabsContent>
       </Tabs>
-    </>
+    </OrganizationDataProvider>
   )
 }
 
 // Composant wrapper pour l'onglet Vue d'ensemble
-async function OrganizationOverviewWrapper() {
-  const { organization, membership } = await getCurrentUserOrganization()
+async function OrganizationOverviewWrapper({ organizationId }: { organizationId?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationId)
   
   if (!organization || !membership) {
     return (
@@ -121,101 +126,119 @@ async function OrganizationOverviewWrapper() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium mb-2">Informations générales</h4>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Nom d'organisation:</dt>
-                  <dd className="font-mono">{organization.slug}</dd>
-                </div>
-                {organization.website && (
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Site web:</dt>
-                    <dd>
-                      <a 
-                        href={organization.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {organization.website}
-                      </a>
-                    </dd>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Votre rôle:</dt>
-                  <dd className="capitalize">{membership.role === 'owner' ? 'Propriétaire' : membership.role}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Plan:</dt>
-                  <dd className="capitalize">{organization.planType}</dd>
-                </div>
-              </dl>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Plan</p>
+              <Badge variant="secondary">
+                {organization.planType}
+              </Badge>
             </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">Statistiques</h4>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Limite de membres:</dt>
-                  <dd>{organization.maxMembers}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Créée le:</dt>
-                  <dd>{new Date(organization.createdAt).toLocaleDateString('fr-FR')}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Statut:</dt>
-                  <dd className="text-green-600">{organization.subscriptionStatus}</dd>
-                </div>
-              </dl>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Statut</p>
+              <Badge variant={organization.subscriptionStatus === 'active' ? 'default' : 'destructive'}>
+                {organization.subscriptionStatus === 'active' ? 'Actif' : 'Inactif'}
+              </Badge>
             </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Limite membres</p>
+              <p className="text-lg font-semibold">{organization.maxMembers}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Votre rôle</p>
+              <Badge variant="outline">
+                {membership.role === 'owner' ? 'Propriétaire' : membership.role}
+              </Badge>
+            </div>
+          </div>
+
+          {organization.website && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Site web</p>
+              <a 
+                href={organization.website} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
+                {organization.website}
+              </a>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Créée le</p>
+            <p className="text-sm">
+              {new Date(organization.createdAt).toLocaleDateString('fr-FR')}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Actions rapides */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Actions rapides
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-20 flex-col gap-2">
-              <Users className="h-6 w-6" />
-              <span>Gérer les membres</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2">
-              <Settings className="h-6 w-6" />
-              <span>Paramètres</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2">
-              <Building2 className="h-6 w-6" />
-              <span>Tableau de bord</span>
-            </Button>
-            {membership.role === 'owner' && (
-              <DeleteOrganizationDialog organization={organization}>
-                <Button variant="outline" className="h-20 flex-col gap-2 text-destructive hover:text-destructive">
-                  <Trash2 className="h-6 w-6" />
-                  <span>Supprimer</span>
-                </Button>
-              </DeleteOrganizationDialog>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Zone dangereuse */}
+      <OrganizationDangerZone organizationId={organizationId} />
     </div>
   )
 }
 
+// Composant pour la zone dangereuse
+async function OrganizationDangerZone({ organizationId }: { organizationId?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationId)
+  
+  if (!organization || !membership) {
+    return null
+  }
+
+  return (
+    <Card className="border-destructive/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-destructive">
+          <Trash2 className="h-5 w-5" />
+          Zone dangereuse
+        </CardTitle>
+        <CardDescription>
+          Actions irréversibles concernant votre membership dans cette organisation
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg">
+          <div>
+            <h4 className="font-medium text-sm">Quitter l'organisation</h4>
+            <p className="text-sm text-muted-foreground">
+              Supprime définitivement votre membership. Vous devrez être réinvité pour rejoindre à nouveau.
+            </p>
+          </div>
+          <LeaveOrganizationButton
+            organizationId={organization.id}
+            organizationName={organization.name}
+            userRole={membership.role}
+            variant="destructive"
+            size="sm"
+          />
+        </div>
+        
+        {membership.role === 'owner' && (
+          <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg">
+            <div>
+              <h4 className="font-medium text-sm">Supprimer l'organisation</h4>
+              <p className="text-sm text-muted-foreground">
+                Supprime définitivement l'organisation et toutes ses données.
+              </p>
+            </div>
+            <DeleteOrganizationDialog organization={organization}>
+              <Button variant="destructive" size="sm">
+                Supprimer
+              </Button>
+            </DeleteOrganizationDialog>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // Composant wrapper pour récupérer l'organisation et passer les props
-async function OrganizationMembersWrapper() {
-  const { organization, membership } = await getCurrentUserOrganization()
+async function OrganizationMembersWrapper({ organizationId }: { organizationId?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationId)
   
   if (!organization || !membership) {
     return (
@@ -234,6 +257,39 @@ async function OrganizationMembersWrapper() {
       organizationId={organization.id} 
       userRole={membership.role} 
     />
+  )
+}
+
+// Composant wrapper pour les paramètres d'organisation
+async function OrganizationSettingsWrapper({ organizationId }: { organizationId?: string }) {
+  const { organization, membership } = await getCurrentOrganization(organizationId)
+  
+  if (!organization || !membership) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Aucune organisation</h3>
+        <p className="text-muted-foreground">
+          Créez d'abord une organisation dans l'onglet "Vue d'ensemble" pour configurer les paramètres.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Paramètres de l'organisation</CardTitle>
+        <CardDescription>
+          Configurez les paramètres de {organization.name}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground">
+          Les paramètres d'organisation seront implémentés dans une prochaine version.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
