@@ -1,13 +1,12 @@
 import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { User, Shield, Bell, Palette, Database, Building2 } from 'lucide-react'
+import { User, Shield, Bell, Palette, Database } from 'lucide-react'
 import { ProfileSettingsForm } from '@/features/dashboard/components/profile-settings-form'
 import { SecuritySettingsForm } from '@/features/dashboard/components/security-settings-form'
 import { NotificationSettingsForm } from '@/features/dashboard/components/notification-settings-form'
 import { AppearanceSettingsForm } from '@/features/dashboard/components/appearance-settings-form'
 import { DataSettingsForm } from '@/features/dashboard/components/data-settings-form'
-import { OrganizationSettingsForm } from '@/features/organization/components/organization-settings-form'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function SettingsSkeleton() {
@@ -28,13 +27,13 @@ export default function SettingsPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Paramètres</h2>
           <p className="text-muted-foreground">
-            Gérez vos préférences et paramètres de compte
+            Gérez vos préférences et paramètres personnels
           </p>
         </div>
       </div>
       
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Profil
@@ -50,10 +49,6 @@ export default function SettingsPage() {
           <TabsTrigger value="appearance" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Apparence
-          </TabsTrigger>
-          <TabsTrigger value="organization" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Organisation
           </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -137,25 +132,6 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="organization" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Paramètres de l'organisation
-              </CardTitle>
-              <CardDescription>
-                Gérez les paramètres et la configuration de votre organisation
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<SettingsSkeleton />}>
-                <OrganizationSettingsForm />
-              </Suspense>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="data" className="space-y-6">
           <Card>
             <CardHeader>
@@ -181,5 +157,5 @@ export default function SettingsPage() {
 
 export const metadata = {
   title: 'Paramètres',
-  description: 'Gérez vos préférences et paramètres de compte et de votre organisation',
+  description: 'Gérez vos préférences et paramètres personnels',
 } 

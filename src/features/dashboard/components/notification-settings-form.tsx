@@ -1,15 +1,62 @@
 'use client'
 
+import { useActionState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Bell, Mail, MessageSquare, AlertTriangle } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Bell, Mail, MessageSquare, AlertTriangle, CheckCircle2, AlertCircle, Save } from 'lucide-react'
+import { updateNotificationSettings, getUserProfile } from '../actions'
+
+async function handleUpdateNotificationSettings(_prevState: any, formData: FormData) {
+  return await updateNotificationSettings(formData)
+}
 
 export function NotificationSettingsForm() {
+  const [state, formAction] = useActionState(handleUpdateNotificationSettings, null)
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getUserProfile().then((data) => {
+      setProfile(data)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-4 bg-muted animate-pulse rounded" />
+        <div className="h-10 bg-muted animate-pulse rounded" />
+        <div className="h-10 bg-muted animate-pulse rounded" />
+      </div>
+    )
+  }
+
+  const preferences = profile?.preferences || {}
+
   return (
-    <div className="space-y-6">
+    <form action={formAction} className="space-y-6">
+      {/* Messages de feedback */}
+      {state?.success && (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>
+            Préférences de notification mises à jour avec succès
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {state?.error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Notifications par email</h3>
         
@@ -24,7 +71,7 @@ export function NotificationSettingsForm() {
                 Recevoir des notifications pour les activités importantes
               </p>
             </div>
-            <Switch id="emailNotifications" name="emailNotifications" defaultChecked />
+            <Switch id="emailNotifications" name="emailNotifications" defaultChecked={preferences.email_notifications ?? true} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -37,7 +84,7 @@ export function NotificationSettingsForm() {
                 Notifications importantes concernant la sécurité de votre compte
               </p>
             </div>
-            <Switch id="securityAlerts" name="securityAlerts" defaultChecked />
+            <Switch id="securityAlerts" name="securityAlerts" defaultChecked={preferences.security_alerts ?? true} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -47,7 +94,7 @@ export function NotificationSettingsForm() {
                 Recevoir des nouvelles sur les produits et fonctionnalités
               </p>
             </div>
-            <Switch id="marketingEmails" name="marketingEmails" />
+            <Switch id="marketingEmails" name="marketingEmails" defaultChecked={preferences.marketing_emails ?? false} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -57,7 +104,7 @@ export function NotificationSettingsForm() {
                 Un résumé de votre activité chaque semaine
               </p>
             </div>
-            <Switch id="weeklyDigest" name="weeklyDigest" defaultChecked />
+            <Switch id="weeklyDigest" name="weeklyDigest" defaultChecked={preferences.weekly_digest ?? true} />
           </div>
         </div>
       </div>
@@ -78,7 +125,7 @@ export function NotificationSettingsForm() {
                 Recevoir des notifications sur votre appareil
               </p>
             </div>
-            <Switch id="pushNotifications" name="pushNotifications" defaultChecked />
+            <Switch id="pushNotifications" name="pushNotifications" defaultChecked={preferences.push_notifications ?? true} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -91,7 +138,7 @@ export function NotificationSettingsForm() {
                 Notifications pour les nouveaux messages
               </p>
             </div>
-            <Switch id="instantMessages" name="instantMessages" defaultChecked />
+            <Switch id="instantMessages" name="instantMessages" defaultChecked={preferences.instant_messages ?? true} />
           </div>
         </div>
       </div>
@@ -103,7 +150,7 @@ export function NotificationSettingsForm() {
         
         <div className="space-y-2">
           <Label htmlFor="notificationFrequency">Fréquence de groupement</Label>
-          <Select name="notificationFrequency" defaultValue="instant">
+          <Select name="notificationFrequency" defaultValue={preferences.notification_frequency || "instant"}>
             <SelectTrigger>
               <SelectValue placeholder="Choisir la fréquence" />
             </SelectTrigger>
@@ -122,10 +169,10 @@ export function NotificationSettingsForm() {
 
       <div className="flex justify-end">
         <Button type="submit" className="flex items-center gap-2">
-          <Bell className="h-4 w-4" />
+          <Save className="h-4 w-4" />
           Sauvegarder les préférences
         </Button>
       </div>
-    </div>
+    </form>
   )
 } 

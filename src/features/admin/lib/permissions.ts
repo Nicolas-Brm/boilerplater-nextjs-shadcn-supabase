@@ -52,78 +52,79 @@ export function canPerformAction(
  */
 export async function getCurrentAdminUser(): Promise<AdminUser | null> {
   try {
-    // Use getCurrentUser instead of requireAuth to avoid redirects
     const user = await getCurrentUser()
     
     if (!user) {
       return null
     }
     
-    const supabase = await createClient()
+    return await buildAdminUserFromAuth(user)
+  } catch (error) {
+    console.error('[ADMIN] Erreur dans getCurrentAdminUser:', error)
+    return null
+  }
+}
 
-    // Récupérer le profil utilisateur
-    const { data: profile, error: profileError } = await supabase
+/**
+ * Construit un objet AdminUser à partir des données auth
+ */
+async function buildAdminUserFromAuth(user: any): Promise<AdminUser | null> {
+  const supabase = await createClient()
+
+  // Récupérer le profil utilisateur
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    console.error('[ADMIN] Erreur lors de la récupération du profil:', profileError)
+    return null
+  }
+
+  if (!profile) {
+    console.warn('[ADMIN] Profil non trouvé pour l\'utilisateur:', user.id)
+    
+    // Créer automatiquement le profil s'il n'existe pas
+    const { data: newProfile, error: createError } = await supabase
       .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
+      .insert({
+        id: user.id,
+        first_name: '',
+        last_name: '',
+        role: UserRole.USER,
+        is_active: true
+      })
+      .select()
       .single()
 
-    if (profileError) {
-      console.error('Erreur lors de la récupération du profil:', profileError)
+    if (createError) {
+      console.error('[ADMIN] Erreur lors de la création du profil:', createError)
       return null
     }
 
-    if (!profile) {
-      console.error('Profil non trouvé pour l\'utilisateur:', user.id)
-      
-      // Créer automatiquement le profil s'il n'existe pas
-      const { data: newProfile, error: createError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: user.id,
-          first_name: '',
-          last_name: '',
-          role: 'user',
-          is_active: true
-        })
-        .select()
-        .single()
+    return buildAdminUserObject(newProfile, user)
+  }
 
-      if (createError) {
-        console.error('Erreur lors de la création du profil:', createError)
-        return null
-      }
+  return buildAdminUserObject(profile, user)
+}
 
-      // Utiliser le nouveau profil créé
-      return {
-        id: newProfile.id,
-        email: user.email || '',
-        firstName: newProfile.first_name || '',
-        lastName: newProfile.last_name || '',
-        role: newProfile.role as UserRole,
-        isActive: newProfile.is_active,
-        emailVerified: !!user.email_confirmed_at,
-        lastSignInAt: user.last_sign_in_at || null,
-        createdAt: user.created_at || '',
-        updatedAt: newProfile.updated_at,
-      }
-    }
-
-    return {
-      id: profile.id,
-      email: user.email || '',
-      firstName: profile.first_name || '',
-      lastName: profile.last_name || '',
-      role: profile.role as UserRole,
-      isActive: profile.is_active,
-      emailVerified: !!user.email_confirmed_at,
-      lastSignInAt: user.last_sign_in_at || null,
-      createdAt: user.created_at || '',
-      updatedAt: profile.updated_at,
-    }
-  } catch (error) {
-    console.error('Erreur dans getCurrentAdminUser:', error)
-    return null
+/**
+ * Construit l'objet AdminUser final
+ */
+function buildAdminUserObject(profile: any, authUser: any): AdminUser {
+  return {
+    id: profile.id,
+    email: authUser.email || '',
+    firstName: profile.first_name || '',
+    lastName: profile.last_name || '',
+    role: profile.role as UserRole,
+    isActive: profile.is_active,
+    emailVerified: !!authUser.email_confirmed_at,
+    lastSignInAt: authUser.last_sign_in_at || null,
+    createdAt: authUser.created_at || '',
+    updatedAt: profile.updated_at,
   }
 }
 
@@ -132,107 +133,83 @@ export async function getCurrentAdminUser(): Promise<AdminUser | null> {
  */
 export async function getCurrentAdminUserAPI(request?: Request): Promise<AdminUser | null> {
   try {
-    console.log('🔍 [AUTH] Récupération de l\'utilisateur API...')
+    console.log('[ADMIN] Récupération de l\'utilisateur API...')
     const user = await requireAuthAPI(request)
     
     if (!user) {
-      console.log('❌ [AUTH] Aucun utilisateur trouvé dans requireAuthAPI')
+      console.log('[ADMIN] Aucun utilisateur trouvé dans requireAuthAPI')
       return null
     }
 
-    console.log('✅ [AUTH] Utilisateur trouvé:', user.email, 'ID:', user.id)
+    console.log('[ADMIN] Utilisateur trouvé:', user.email)
 
-    // Utiliser le même client Supabase que requireAuthAPI
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let supabase: any
-    
-    if (request) {
-      // Utiliser les cookies de la requête si fournis
-      const cookieHeader = request.headers.get('cookie') || ''
-      
-      supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieHeader.split(';').map(cookie => {
-                const [name, ...rest] = cookie.trim().split('=')
-                return { name, value: rest.join('=') }
-              }).filter(cookie => cookie.name && cookie.value)
-            },
-            setAll() {
-              // Ne pas essayer de définir des cookies dans une API route
-            },
-          },
-        }
-      )
-    } else {
-      // Fallback vers l'approche originale
-      const cookieStore = await cookies()
-      
-      supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll()
-            },
-            setAll(cookiesToSet) {
-              try {
-                cookiesToSet.forEach(({ name, value, options }) => {
-                  cookieStore.set(name, value, options)
-                })
-              } catch {
-                // ignore les erreurs de cookies en API route
-              }
-            },
-          },
-        }
-      )
-    }
-
-    // Récupérer le profil utilisateur
-    console.log('🔍 [AUTH] Récupération du profil depuis user_profiles...')
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError) {
-      console.error('❌ [AUTH] Erreur lors de la récupération du profil:', profileError)
-      return null
-    }
-
-    if (!profile) {
-      console.error('❌ [AUTH] Profil non trouvé pour l\'utilisateur:', user.id)
-      return null
-    }
-
-    console.log('✅ [AUTH] Profil trouvé:', {
-      id: profile.id,
-      role: profile.role,
-      isActive: profile.is_active
-    })
-
-    return {
-      id: profile.id,
-      email: user.email || '',
-      firstName: profile.first_name || '',
-      lastName: profile.last_name || '',
-      role: profile.role as UserRole,
-      isActive: profile.is_active,
-      emailVerified: !!user.email_confirmed_at,
-      lastSignInAt: user.last_sign_in_at || null,
-      createdAt: user.created_at || '',
-      updatedAt: profile.updated_at,
-    }
+    const supabase = await createSupabaseClientForAPI(request)
+    return await getProfileForUser(supabase, user)
   } catch (error) {
-    console.error('❌ [AUTH] Erreur dans getCurrentAdminUserAPI:', error)
+    console.error('[ADMIN] Erreur dans getCurrentAdminUserAPI:', error)
     return null
   }
+}
+
+/**
+ * Crée un client Supabase adapté pour les API routes
+ */
+async function createSupabaseClientForAPI(request?: Request) {
+  if (request) {
+    const cookieHeader = request.headers.get('cookie') || ''
+    
+    return createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieHeader.split(';').map(cookie => {
+              const [name, ...rest] = cookie.trim().split('=')
+              return { name, value: rest.join('=') }
+            }).filter(cookie => cookie.name && cookie.value)
+          },
+          setAll() {
+            // Ne pas essayer de définir des cookies dans une API route
+          },
+        },
+      }
+    )
+  }
+  
+  // Fallback vers le client standard
+  return await createClient()
+}
+
+/**
+ * Récupère le profil utilisateur et construit l'objet AdminUser
+ */
+async function getProfileForUser(supabase: any, user: any): Promise<AdminUser | null> {
+  console.log('[ADMIN] Récupération du profil depuis user_profiles...')
+  
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    console.error('[ADMIN] Erreur lors de la récupération du profil:', profileError)
+    return null
+  }
+
+  if (!profile) {
+    console.error('[ADMIN] Profil non trouvé pour l\'utilisateur:', user.id)
+    return null
+  }
+
+  console.log('[ADMIN] Profil trouvé:', {
+    id: profile.id,
+    role: profile.role,
+    isActive: profile.is_active
+  })
+
+  return buildAdminUserObject(profile, user)
 }
 
 /**

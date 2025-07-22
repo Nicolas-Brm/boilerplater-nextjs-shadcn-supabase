@@ -6,6 +6,7 @@ export { LeaveOrganizationButtonWrapper } from './leave-organization-button-wrap
 export { MembersManagement } from './members-management'
 export { MembersManagementWrapper } from './members-management-wrapper'
 export { OrganizationSettingsForm } from './organization-settings-form'
+export { OrganizationSettingsWrapper } from './organization-settings-wrapper'
 export { OrganizationSwitcher } from './organization-switcher'
 export { OrganizationProvider, useOrganization } from './organization-context'
 export { OrganizationDataProvider } from './organization-data-provider'

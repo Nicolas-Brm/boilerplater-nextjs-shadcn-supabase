@@ -15,10 +15,8 @@ src/features/admin/
 ├── actions/
 │   └── onboarding.ts          # Actions serveur pour l'onboarding
 ├── components/
-│   ├── onboarding-form.tsx    # Formulaire de création du superadmin
-│   └── onboarding-success.tsx # Page de succès post-création
-├── hooks/
-│   └── use-onboarding-guard.ts # Hook client pour vérification
+│   ├── enhanced-onboarding-form.tsx # Formulaire de création du superadmin (multi-étapes)
+│   └── onboarding-success.tsx       # Page de succès post-création
 └── README-onboarding.md
 
 src/app/
@@ -56,16 +54,20 @@ export default function HomePage() {
 ### 2. Redirection automatique
 
 Si aucun superadmin n'est trouvé :
-- **Serveur** : Redirection immédiate vers `/onboarding`
-- **Client** : API `/api/admin/onboarding/status` + redirection
+- **Serveur** : Redirection immédiate vers `/onboarding` via OnboardingGuard
 
-### 3. Processus de création
+### 3. Processus de création (Multi-étapes)
 
-1. **Formulaire** : Collecte email, mot de passe, prénom, nom
-2. **Validation** : Zod côté client et serveur
+1. **Formulaire multi-étapes** : 
+   - Étape 1: Bienvenue et présentation
+   - Étape 2: Informations personnelles (prénom, nom, email)
+   - Étape 3: Sécurité (mot de passe + confirmation)
+   - Étape 4: Récapitulatif et validation
+2. **Validation** : Zod côté client et serveur avec feedback en temps réel
 3. **Création** : 
    - Utilisateur dans `auth.users` (email auto-confirmé)
    - Profil dans `user_profiles` avec rôle `super_admin`
+   - Connexion automatique après création
 4. **Redirection** : Vers `/onboarding/success`
 
 ### 4. Page de succès
@@ -107,20 +109,9 @@ export default async function MyComponent() {
 }
 ```
 
-### API côté client
+### API côté client (optionnelle)
 
-```typescript
-import { useOnboardingGuard } from '@/features/admin/hooks'
-
-export function MyClientComponent() {
-  const { isChecking, needsOnboarding } = useOnboardingGuard()
-  
-  if (isChecking) return <Loading />
-  if (needsOnboarding) return <OnboardingRequired />
-  
-  return <NormalContent />
-}
-```
+Le système privilégie les redirections côté serveur pour de meilleures performances et SEO. L'API `/api/admin/onboarding/status` reste disponible pour des cas spécifiques nécessitant une vérification côté client.
 
 ## Configuration requise
 

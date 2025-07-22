@@ -14,20 +14,18 @@ export async function hasSuperAdmin(): Promise<boolean> {
   try {
     const supabase = await createClient()
     
-    const { data, error } = await supabase
+    const { count, error } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('*', { count: 'exact', head: true })
       .eq('role', UserRole.SUPER_ADMIN)
       .eq('is_active', true)
-      .limit(1)
-      .single()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+    if (error) {
       console.error('Erreur lors de la vérification des superadmins:', error)
       return false
     }
 
-    return !!data
+    return (count ?? 0) > 0
   } catch (error) {
     console.error('Erreur lors de la vérification des superadmins:', error)
     return false
@@ -49,11 +47,12 @@ export async function needsOnboarding(): Promise<AdminActionResult<{ needsOnboar
     }
   } catch (error) {
     console.error('Erreur lors de la vérification de l\'onboarding:', error)
+    // En cas d'erreur, on assume qu'il faut faire l'onboarding par sécurité
     return {
       success: false,
       error: 'Erreur lors de la vérification du statut d\'onboarding',
       data: {
-        needsOnboarding: false
+        needsOnboarding: true
       }
     }
   }

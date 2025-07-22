@@ -42,9 +42,7 @@ export function OrganizationSwitcher() {
       
       // Si on est sur une page spécifique à l'organisation, on reste dessus
       // Sinon on redirige vers la page organisations
-      if (!pathname.includes('/dashboard/organizations')) {
-        router.push('/dashboard/organizations')
-      }
+
     }
   }
 
@@ -86,7 +84,7 @@ export function OrganizationSwitcher() {
       <SidebarGroupLabel>Organisation</SidebarGroupLabel>
       <SidebarGroupContent>
         <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+          <PopoverTrigger asChild >
             <SidebarMenuButton
               role="combobox"
               aria-expanded={open}
@@ -112,7 +110,7 @@ export function OrganizationSwitcher() {
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </SidebarMenuButton>
           </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0" align="start">
+          <PopoverContent className={cn("w-[240px] p-0 bg-background", open ? "border border-sidebar-border" : "bg-background")} align="start">
             <Command>
               <CommandInput placeholder="Rechercher une organisation..." />
               <CommandList>

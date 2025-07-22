@@ -1,15 +1,68 @@
 'use client'
 
+import { useActionState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
-import { Shield, Lock, Smartphone } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Shield, Lock, Smartphone, CheckCircle2, AlertCircle, Save } from 'lucide-react'
+import { getUserProfile } from '../actions'
+
+// TODO: Implémenter updateSecuritySettings dans les actions
+async function updateSecuritySettings(formData: FormData) {
+  // Placeholder pour l'action de sécurité
+  console.log('Security settings update:', Object.fromEntries(formData))
+  await new Promise(resolve => setTimeout(resolve, 1000)) // Simulation
+  return { success: true, data: { message: 'Paramètres de sécurité mis à jour' } }
+}
+
+async function handleUpdateSecuritySettings(_prevState: any, formData: FormData) {
+  return await updateSecuritySettings(formData)
+}
 
 export function SecuritySettingsForm() {
+  const [state, formAction] = useActionState(handleUpdateSecuritySettings, null)
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getUserProfile().then((data) => {
+      setProfile(data)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-4 bg-muted animate-pulse rounded" />
+        <div className="h-10 bg-muted animate-pulse rounded" />
+        <div className="h-10 bg-muted animate-pulse rounded" />
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <form action={formAction} className="space-y-6">
+      {/* Messages de feedback */}
+      {state?.success && (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>
+            Paramètres de sécurité mis à jour avec succès
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {state?.error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Mot de passe</h3>
         
@@ -70,10 +123,10 @@ export function SecuritySettingsForm() {
 
       <div className="flex justify-end">
         <Button type="submit" className="flex items-center gap-2">
-          <Shield className="h-4 w-4" />
+          <Save className="h-4 w-4" />
           Sauvegarder les paramètres de sécurité
         </Button>
       </div>
-    </div>
+    </form>
   )
 } 
