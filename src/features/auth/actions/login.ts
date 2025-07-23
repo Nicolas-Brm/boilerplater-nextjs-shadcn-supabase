@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { LoginSchema, type ActionResult } from '../types'
+import { LoginSchema, type ActionResult, type LoginSuccessData } from '../types'
 
 export async function login(
-  prevState: ActionResult | null,
+  prevState: ActionResult<LoginSuccessData> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<LoginSuccessData>> {
   const supabase = await createClient()
 
   // Validation des données
@@ -38,7 +38,9 @@ export async function login(
       }
     }
 
+    // On fait la revalidation après le succès mais on laisse le composant gérer la redirection
     revalidatePath('/', 'layout')
+    
     return {
       success: true,
       data: { 

@@ -1,48 +1,65 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { login } from '../actions/login'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { useFormStatus } from 'react-dom'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  
-  return (
-    <Button 
-      type="submit" 
-      className="w-full" 
-      disabled={pending}
-      size="default"
-    >
-      {pending ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Connexion...
-        </>
-      ) : (
-        'Se connecter'
-      )}
-    </Button>
-  )
-}
-
-function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
-  const [state, formAction] = useActionState(login, null)
+export function LoginForm() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const message = searchParams?.get('message')
 
-  // Gérer la redirection après succès
+  // Afficher le message initial si présent
   useEffect(() => {
-    if (state?.success && state?.data?.redirect) {
-      router.push(state.data.redirect)
+    if (message) {
+      toast.success(message)
     }
-  }, [state, router])
+  }, [message])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setErrors({})
+
+    const formData = new FormData(e.currentTarget)
+
+    try {
+      const result = await login(null, formData)
+
+      if (result.success && result.data?.message) {
+        toast.success(result.data.message)
+        if (result.data.redirect) {
+          setTimeout(() => {
+            router.push(result.data!.redirect!)
+          }, 1000)
+        }
+      } else if (result.error) {
+        toast.error(result.error)
+      } else if (result.errors) {
+        setErrors(result.errors)
+        // Afficher aussi les erreurs en toast
+        Object.entries(result.errors).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            messages.forEach(message => {
+              toast.error(`${field}: ${message}`)
+            })
+          }
+        })
+      }
+    } catch (error) {
+      toast.error('Une erreur inattendue est survenue')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -55,29 +72,7 @@ function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
       </div>
 
       {/* Form */}
-      <form action={formAction} className="space-y-6">
-        {/* Messages */}
-        {initialMessage && (
-          <Alert>
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>{initialMessage}</AlertDescription>
-          </Alert>
-        )}
-        
-        {state?.error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{state.error}</AlertDescription>
-          </Alert>
-        )}
-        
-        {state?.success && state?.data?.message && (
-          <Alert>
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>{state.data.message}</AlertDescription>
-          </Alert>
-        )}
-        
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email Field */}
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -89,8 +84,8 @@ function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
             required
             className="h-11"
           />
-          {state?.errors?.email && (
-            <p className="text-sm text-destructive">{state.errors.email[0]}</p>
+          {errors.email && (
+            <p className="text-sm text-destructive">{errors.email[0]}</p>
           )}
         </div>
         
@@ -112,13 +107,27 @@ function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
             required
             className="h-11"
           />
-          {state?.errors?.password && (
-            <p className="text-sm text-destructive">{state.errors.password[0]}</p>
+          {errors.password && (
+            <p className="text-sm text-destructive">{errors.password[0]}</p>
           )}
         </div>
         
         {/* Submit Button */}
-        <SubmitButton />
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading}
+          size="default"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Connexion...
+            </>
+          ) : (
+            'Se connecter'
+          )}
+        </Button>
       </form>
       
       {/* Footer */}
@@ -133,11 +142,4 @@ function LoginFormContent({ initialMessage }: { initialMessage?: string }) {
       </div>
     </div>
   )
-}
-
-export function LoginForm() {
-  const searchParams = useSearchParams()
-  const message = searchParams?.get('message') || null
-  
-  return <LoginFormContent initialMessage={message || undefined} />
 } 

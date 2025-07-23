@@ -1,5 +1,6 @@
 import { requireNoAuth } from '@/lib/auth'
 import { ModeToggle } from '@/features/theme/components/modetoggle'
+import { Toaster } from '@/components/ui/sonner'
 
 export default async function AuthLayout({
   children,
@@ -85,6 +86,7 @@ export default async function AuthLayout({
           {children}
         </div>
       </div>
+      <Toaster />
     </div>
   )
 } 

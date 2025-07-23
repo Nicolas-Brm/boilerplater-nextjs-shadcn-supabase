@@ -1,12 +1,12 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { ForgotPasswordSchema, type ActionResult } from '../types'
+import { ForgotPasswordSchema, type ActionResult, type ForgotPasswordSuccessData } from '../types'
 
 export async function forgotPassword(
-  prevState: ActionResult | null,
+  prevState: ActionResult<ForgotPasswordSuccessData> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<ForgotPasswordSuccessData>> {
   const supabase = await createClient()
 
   // Validation des données

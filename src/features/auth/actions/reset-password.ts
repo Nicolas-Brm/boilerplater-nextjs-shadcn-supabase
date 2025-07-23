@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { ResetPasswordSchema, type ActionResult } from '../types'
+import { ResetPasswordSchema, type ActionResult, type ResetPasswordSuccessData } from '../types'
 
 export async function resetPassword(
-  prevState: ActionResult | null,
+  prevState: ActionResult<ResetPasswordSuccessData> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<ResetPasswordSuccessData>> {
   const supabase = await createClient()
 
   // Validation des données

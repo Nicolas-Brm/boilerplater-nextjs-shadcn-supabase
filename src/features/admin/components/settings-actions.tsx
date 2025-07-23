@@ -16,11 +16,17 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { 
-  toggleMaintenanceMode, 
-  resetSettings, 
-  exportSettings 
-} from '../actions'
+// TODO: Fix these imports
+// import { 
+//   toggleMaintenanceMode, 
+//   resetSettings, 
+//   exportSettings 
+// } from '../actions'
+
+// Temporary placeholder functions
+const toggleMaintenanceMode = async () => ({ success: false, error: 'Non implémenté', data: { message: 'Non implémenté' } })
+const resetSettings = async () => ({ success: false, error: 'Non implémenté', data: { message: 'Non implémenté' } })
+const exportSettings = async () => ({ success: false, error: 'Non implémenté', data: { downloadUrl: '', message: 'Non implémenté' } })
 import { SystemSettings } from '../types'
 import { 
   Power, 

@@ -2,14 +2,14 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { type ActionResult } from '../types'
+import { type ActionResult, type LogoutSuccessData } from '../types'
 
 export async function logoutSimple(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _prevState: ActionResult | null, 
+  _prevState: ActionResult<LogoutSuccessData> | null, 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _formData?: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<LogoutSuccessData>> {
   const supabase = await createClient()
 
   try {

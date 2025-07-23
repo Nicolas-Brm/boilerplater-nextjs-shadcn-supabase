@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator'
 import { getCurrentAdminUser } from '@/features/admin/lib/permissions'
 import { UserRole } from '@/features/admin/types'
 import { AdminSidebarWrapper } from '@/features/admin/components/admin-sidebar-wrapper'
+import { Toaster } from '@/components/ui/sonner'
 
 async function AdminGuard() {
   const adminUser = await getCurrentAdminUser()
@@ -51,6 +52,7 @@ export default async function AdminLayout({
               {children}
             </main>
           </div>
+          <Toaster />
         </SidebarInset>
         {modal} {/* Rendu du modal parallèle */}
       </SidebarProvider>

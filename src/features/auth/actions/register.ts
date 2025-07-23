@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { RegisterSchema, type ActionResult } from '../types'
+import { RegisterSchema, type ActionResult, type RegisterSuccessData } from '../types'
 
 export async function register(
-  prevState: ActionResult | null,
+  prevState: ActionResult<RegisterSuccessData> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<RegisterSuccessData>> {
   const supabase = await createClient()
 
   // Validation des données

@@ -1,11 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { logoutSimple } from '../actions/logout-simple'
+import type { LogoutSuccessData } from '../types'
 import { Loader2, LogOut } from 'lucide-react'
-import { useEffect } from 'react'
 import { toast } from 'sonner'
 
 interface LogoutButtonProps {
@@ -49,36 +49,44 @@ export function LogoutButton({
   children 
 }: LogoutButtonProps) {
   const router = useRouter()
-  const [state, formAction, isPending] = useActionState(logoutSimple, null)
+  const [isPending, setIsPending] = useState(false)
 
-  // Gérer les résultats de l'action
-  useEffect(() => {
-    if (state) {
-      if (state.success) {
-        // Redirection côté client
-        if (state.data?.redirect) {
-          router.push(state.data.redirect)
-        }
+  const handleLogout = async () => {
+    setIsPending(true)
+
+    try {
+      const result = await logoutSimple(null)
+
+      if (result.success) {
         toast.success('Déconnexion réussie')
-      } else if (state.error) {
-        toast.error(state.error)
+        if (result.data?.redirect) {
+          // Délai court pour laisser apparaître le toast
+          setTimeout(() => {
+            router.push(result.data!.redirect)
+          }, 500)
+        }
+      } else if (result.error) {
+        toast.error(result.error)
       }
+    } catch (error) {
+      toast.error('Une erreur inattendue est survenue lors de la déconnexion')
+    } finally {
+      setIsPending(false)
     }
-  }, [state, router])
+  }
 
   return (
-    <form action={formAction}>
-      <Button 
-        type="submit" 
-        variant={variant} 
-        size={size}
-        className={className}
-        disabled={isPending}
-      >
-        <LogoutButtonContent showIcon={showIcon} isPending={isPending}>
-          {children}
-        </LogoutButtonContent>
-      </Button>
-    </form>
+    <Button 
+      type="button"
+      onClick={handleLogout}
+      variant={variant} 
+      size={size}
+      className={className}
+      disabled={isPending}
+    >
+      <LogoutButtonContent showIcon={showIcon} isPending={isPending}>
+        {children}
+      </LogoutButtonContent>
+    </Button>
   )
 } 

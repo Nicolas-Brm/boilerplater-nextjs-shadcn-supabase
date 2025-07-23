@@ -1,55 +1,59 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { resetPassword } from '../actions/reset-password'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { useFormStatus } from 'react-dom'
-import { useState } from 'react'
-
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  
-  return (
-    <Button 
-      type="submit" 
-      className="w-full" 
-      disabled={pending}
-      size="default"
-    >
-      {pending ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Réinitialisation...
-        </>
-      ) : (
-        'Réinitialiser le mot de passe'
-      )}
-    </Button>
-  )
-}
+import { Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function ResetPasswordForm() {
-  const [state, formAction] = useActionState(resetPassword, null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
 
-  // Gérer la redirection après succès
-  useEffect(() => {
-    if (state?.success && state?.data?.redirect) {
-      // Attendre un peu pour que l'utilisateur puisse voir le message de succès
-      const timer = setTimeout(() => {
-        router.push(state.data.redirect)
-      }, 2000)
-      return () => clearTimeout(timer)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setErrors({})
+
+    const formData = new FormData(e.currentTarget)
+
+    try {
+      const result = await resetPassword(null, formData)
+
+      if (result.success && result.data?.message) {
+        toast.success(result.data.message)
+        if (result.data.redirect) {
+          // Délai pour laisser le temps au toast d'apparaître et à l'utilisateur de le lire
+          setTimeout(() => {
+            router.push(result.data!.redirect!)
+          }, 2000)
+        }
+      } else if (result.error) {
+        toast.error(result.error)
+      } else if (result.errors) {
+        setErrors(result.errors)
+        // Afficher aussi les erreurs en toast
+        Object.entries(result.errors).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            messages.forEach(message => {
+              toast.error(`${field}: ${message}`)
+            })
+          }
+        })
+      }
+    } catch (error) {
+      toast.error('Une erreur inattendue est survenue')
+    } finally {
+      setIsLoading(false)
     }
-  }, [state, router])
+  }
 
   return (
     <div className="space-y-8">
@@ -62,22 +66,7 @@ export function ResetPasswordForm() {
       </div>
 
       {/* Form */}
-      <form action={formAction} className="space-y-6">
-        {/* Messages */}
-        {state?.error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{state.error}</AlertDescription>
-          </Alert>
-        )}
-        
-        {state?.success && state?.data?.message && (
-          <Alert>
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>{state.data.message}</AlertDescription>
-          </Alert>
-        )}
-        
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Password Field */}
         <div className="space-y-2">
           <Label htmlFor="password">Nouveau mot de passe</Label>
@@ -107,8 +96,8 @@ export function ResetPasswordForm() {
               </span>
             </Button>
           </div>
-          {state?.errors?.password && (
-            <p className="text-sm text-destructive">{state.errors.password[0]}</p>
+          {errors.password && (
+            <p className="text-sm text-destructive">{errors.password[0]}</p>
           )}
         </div>
         
@@ -141,8 +130,8 @@ export function ResetPasswordForm() {
               </span>
             </Button>
           </div>
-          {state?.errors?.confirmPassword && (
-            <p className="text-sm text-destructive">{state.errors.confirmPassword[0]}</p>
+          {errors.confirmPassword && (
+            <p className="text-sm text-destructive">{errors.confirmPassword[0]}</p>
           )}
         </div>
         
@@ -158,7 +147,21 @@ export function ResetPasswordForm() {
         </div>
         
         {/* Submit Button */}
-        <SubmitButton />
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading}
+          size="default"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Réinitialisation...
+            </>
+          ) : (
+            'Réinitialiser le mot de passe'
+          )}
+        </Button>
       </form>
       
       {/* Footer */}
