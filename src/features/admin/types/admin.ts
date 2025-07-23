@@ -106,13 +106,8 @@ export interface AdminStats {
   totalUsers: number
   activeUsers: number
   newUsersThisMonth: number
-  totalContent: number
-  pendingModeration: number
-  systemLoad: {
-    cpu: number
-    memory: number
-    storage: number
-  }
+  totalOrganizations: number
+  activeOrganizations: number
 }
 
 export interface ActivityLog {

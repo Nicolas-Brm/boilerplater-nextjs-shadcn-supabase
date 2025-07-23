@@ -1,219 +1,41 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
-
-export const dynamic = 'force-dynamic'
+import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { getAdminStats } from '@/features/admin/actions'
-import type { AdminStats } from '@/features/admin/types'
-import { getCurrentUser } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
+import { Button } from '@/components/ui/button'
 import { 
   Users, 
-  UserCheck, 
-  UserPlus, 
   Activity,
-  AlertTriangle,
-  Cpu,
-  HardDrive,
-  MemoryStick
+  Building2,
+  Settings
 } from 'lucide-react'
-import { redirect } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { getCurrentUser } from '@/lib/auth'
+import { getAdminStats } from '@/features/admin/actions/stats'
+import { AdminStatsCards, AdminStatsCardsSkeleton } from '@/features/admin/components/admin-stats-cards'
 
-function AdminStatsCards({ stats }: { stats: AdminStats }) {
+async function StatsSection() {
+  const statsResult = await getAdminStats()
 
-  return (
-    <>
+  if (!statsResult.success) {
+    return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Utilisateurs</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalUsers}</div>
-          <p className="text-xs text-muted-foreground">
-            Tous les utilisateurs enregistrés
+        <CardContent className="pt-6">
+          <p className="text-destructive">
+            Erreur: {statsResult.error}
           </p>
         </CardContent>
       </Card>
+    )
+  }
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Utilisateurs Actifs</CardTitle>
-          <UserCheck className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.activeUsers}</div>
-          <p className="text-xs text-muted-foreground">
-            Comptes actifs et vérifiés
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Nouveaux ce mois</CardTitle>
-          <UserPlus className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.newUsersThisMonth}</div>
-          <p className="text-xs text-muted-foreground">
-            Inscriptions du mois en cours
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Modération</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.pendingModeration}</div>
-          <p className="text-xs text-muted-foreground">
-            Éléments en attente
-          </p>
-        </CardContent>
-      </Card>
-    </>
-  )
-}
-
-function SystemLoadCards({ systemLoad }: { systemLoad: AdminStats['systemLoad'] }) {
-
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">CPU</CardTitle>
-          <Cpu className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{systemLoad.cpu}%</div>
-          <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${systemLoad.cpu}%` }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Mémoire</CardTitle>
-          <MemoryStick className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{systemLoad.memory}%</div>
-          <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${systemLoad.memory}%` }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Stockage</CardTitle>
-          <HardDrive className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{systemLoad.storage}%</div>
-          <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${systemLoad.storage}%` }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+  return <AdminStatsCards stats={statsResult.data!} />
 }
 
 export default async function AdminDashboardPage() {
-  // Check authentication first
   const user = await getCurrentUser()
   
   if (!user) {
     redirect('/login')
-  }
-
-  // Fetch stats with proper error handling
-  let statsResult
-  
-  try {
-    statsResult = await getAdminStats()
-    
-    // If getAdminStats returns an error result, handle it
-    if (!statsResult.success && statsResult.error === 'Accès admin requis') {
-      return (
-        <div className="space-y-6">
-          <h1 className="text-3xl font-bold">Accès non autorisé</h1>
-          <p className="text-destructive">Vous devez avoir des privilèges administrateur pour accéder à cette page.</p>
-          <Button asChild>
-            <Link href="/dashboard">Retour au tableau de bord</Link>
-          </Button>
-        </div>
-      )
-    }
-  } catch (error) {
-    console.error('Erreur lors de la récupération des statistiques:', error)
-    
-    // If it's an auth error, redirect to login
-    if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-      redirect('/login')
-    }
-    
-    // If it's an admin access error, show unauthorized page
-    if (error instanceof Error && error.message === 'Accès admin requis') {
-      return (
-        <div className="space-y-6">
-          <h1 className="text-3xl font-bold">Accès non autorisé</h1>
-          <p className="text-destructive">Vous devez avoir des privilèges administrateur pour accéder à cette page.</p>
-          <Button asChild>
-            <Link href="/dashboard">Retour au tableau de bord</Link>
-          </Button>
-        </div>
-      )
-    }
-    
-    statsResult = {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    }
-  }
-
-  // For debugging, use a simpler approach  
-  // Récupérer le profil admin directement
-  const supabase = await createClient()
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Erreur de profil</h1>
-        <p className="text-destructive">
-          Profil utilisateur non trouvé. Connectez-vous sur <a href="/admin/debug" className="underline">/admin/debug</a> pour diagnostiquer.
-        </p>
-      </div>
-    )
-  }
-
-  const adminUser = {
-    id: profile.id,
-    email: user.email || '',
-    firstName: profile.first_name || '',
-    lastName: profile.last_name || '',
-    role: profile.role,
-    isActive: profile.is_active
   }
 
   return (
@@ -221,42 +43,14 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold">Tableau de bord administrateur</h1>
         <p className="text-muted-foreground">
-          Bienvenue {adminUser.firstName} {adminUser.lastName}
+          Vue d'ensemble du système et accès aux fonctionnalités d'administration
         </p>
       </div>
 
       {/* Statistiques principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsResult.success && statsResult.data ? (
-          <AdminStatsCards stats={statsResult.data} />
-        ) : (
-          <div className="col-span-full">
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-destructive">
-                  Erreur lors du chargement des statistiques: {statsResult.error || 'Erreur inconnue'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-
-      {/* Charge système */}
-      <div>
-        <h2 className="text-2xl font-semibold mb-4">Charge système</h2>
-        {statsResult.success && statsResult.data?.systemLoad ? (
-          <SystemLoadCards systemLoad={statsResult.data.systemLoad} />
-        ) : (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">
-                Données de charge système non disponibles
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <Suspense fallback={<AdminStatsCardsSkeleton />}>
+        <StatsSection />
+      </Suspense>
 
       {/* Actions rapides */}
       <div>
@@ -273,12 +67,30 @@ export default async function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link 
-                href="/admin/users" 
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              >
-                Accéder
-              </Link>
+              <Button asChild>
+                <Link href="/admin/users">
+                  Accéder
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Gestion des organisations
+              </CardTitle>
+              <CardDescription>
+                Superviser les organisations et leurs membres
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link href="/admin/organizations">
+                  Accéder
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
@@ -293,19 +105,18 @@ export default async function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <a 
-                href="/admin/logs" 
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              >
-                Consulter
-              </a>
+              <Button asChild>
+                <Link href="/admin/logs">
+                  Consulter
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
+                <Settings className="h-5 w-5" />
                 Paramètres système
               </CardTitle>
               <CardDescription>
@@ -313,24 +124,15 @@ export default async function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <a 
-                href="/admin/settings" 
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              >
-                Configurer
-              </a>
+              <Button asChild>
+                <Link href="/admin/settings">
+                  Configurer
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Badge de rôle */}
-      <div className="flex justify-end">
-        <Badge variant="outline" className="gap-2">
-          <Activity className="h-3 w-3" />
-          {adminUser.role.replace('_', ' ').toUpperCase()}
-        </Badge>
-      </div>
     </div>
   )
-} 
+}

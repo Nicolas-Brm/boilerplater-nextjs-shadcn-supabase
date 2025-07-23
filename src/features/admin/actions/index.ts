@@ -1,6 +1,8 @@
-// Barrel exports pour les actions admin
-export * from './debug'
+// Export des actions admin refactorisées avec vraies données
+export * from './stats'
 export * from './users'
-export * from './analytics'
-export * from './settings'
-export * from './onboarding' 
+export * from './organizations'
+export * from './activity-logs'
+
+// Actions avec vraies données existantes
+export { getSystemSettings, updateSystemSettings } from './settings' 

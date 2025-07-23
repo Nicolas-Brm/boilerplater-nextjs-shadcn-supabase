@@ -6,14 +6,15 @@ import {
   CreateUserSchema, 
   UpdateUserSchema, 
   UserFiltersSchema,
-  type AdminActionResult,
-  type AdminUser,
+  AdminActionResult,
+  AdminUser,
   Permission,
-  UserRole 
+  UserRole,
+  UserFiltersData
 } from '../types'
 import { requireAdmin, logActivity } from '../lib/permissions'
 
-export async function getUsers(searchParams: URLSearchParams): Promise<AdminActionResult<{
+interface PaginatedUsers {
   users: AdminUser[]
   pagination: {
     page: number
@@ -21,135 +22,49 @@ export async function getUsers(searchParams: URLSearchParams): Promise<AdminActi
     total: number
     totalPages: number
   }
-}>> {
+}
+
+/**
+ * Récupère la liste des utilisateurs avec filtres optimisés
+ */
+export async function getUsers(searchParams: URLSearchParams): Promise<AdminActionResult<PaginatedUsers>> {
   try {
-    console.log('🔍 [getUsers] Début de la récupération des utilisateurs')
-    
-    // Vérifier les permissions admin
+    // Vérifier les permissions
     await requireAdmin([Permission.VIEW_USERS])
-    console.log('✅ [getUsers] Permissions admin validées')
 
     const supabase = await createClient()
 
-    // Vérifier qu'on a la clé service role pour récupérer les infos auth
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.log('❌ [getUsers] Service role key manquante')
-      return {
-        success: false,
-        error: 'Configuration manquante: SUPABASE_SERVICE_ROLE_KEY nécessaire pour récupérer les utilisateurs',
-      }
-    }
+    // Valider les filtres
+    const filters = parseUserFilters(searchParams)
 
-    // Client Supabase avec service_role pour les opérations admin
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
-    // Valider et parser les paramètres de filtrage
-    const filters = UserFiltersSchema.parse({
-      search: searchParams.get('search') || undefined,
-      role: searchParams.get('role') || undefined,
-      isActive: searchParams.get('isActive') ? searchParams.get('isActive') === 'true' : undefined,
-      createdAfter: searchParams.get('createdAfter') || undefined,
-      createdBefore: searchParams.get('createdBefore') || undefined,
-      page: parseInt(searchParams.get('page') || '1', 10),
-      limit: parseInt(searchParams.get('limit') || '10', 10),
-    })
-
-    console.log('🔍 [getUsers] Filtres appliqués:', filters)
-
-    // Construire la requête de base
-    let query = supabase
+    // Construction de la requête optimisée
+    let profileQuery = supabase
       .from('user_profiles')
       .select('*', { count: 'exact' })
 
-    // Appliquer les filtres
-    if (filters.search) {
-      query = query.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%`)
-    }
+    // Application des filtres
+    profileQuery = applyUserFilters(profileQuery, filters)
 
-    if (filters.role) {
-      query = query.eq('role', filters.role)
-    }
-
-    if (filters.isActive !== undefined) {
-      query = query.eq('is_active', filters.isActive)
-    }
-
-    if (filters.createdAfter) {
-      query = query.gte('created_at', filters.createdAfter)
-    }
-
-    if (filters.createdBefore) {
-      query = query.lte('created_at', filters.createdBefore)
-    }
-
-    // Appliquer la pagination
+    // Pagination
     const offset = (filters.page - 1) * filters.limit
-    query = query
+    profileQuery = profileQuery
       .range(offset, offset + filters.limit - 1)
       .order('created_at', { ascending: false })
 
-    console.log('🔍 [getUsers] Exécution de la requête...')
-    const { data: profiles, error, count } = await query
-
-    console.log('🔍 [getUsers] Résultat de la requête:', {
-      profilesCount: profiles?.length || 0,
-      totalCount: count,
-      error: error?.message
-    })
+    const { data: profiles, error, count } = await profileQuery
 
     if (error) {
       throw new Error(`Erreur lors de la récupération des utilisateurs: ${error.message}`)
     }
 
-    // Récupérer les informations auth pour chaque utilisateur
-    const users: AdminUser[] = []
+    // Enrichir avec les données auth en batch
+    const users = await enrichWithAuthData(profiles || [])
     
-    console.log('🔍 [getUsers] Récupération des infos auth pour chaque profil...')
-    for (const profile of profiles || []) {
-      console.log(`  - Profil ${profile.id}: ${profile.first_name} ${profile.last_name} (${profile.role})`)
-      
-      // Récupérer l'utilisateur auth avec le client admin
-      const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.admin.getUserById(profile.id)
-      
-      if (authError) {
-        console.log(`  ❌ Erreur auth pour ${profile.id}:`, authError.message)
-        continue
-      }
-      
-      if (authUser) {
-        console.log(`  ✅ Auth trouvé pour ${profile.id}: ${authUser.email}`)
-        users.push({
-          id: profile.id,
-          email: authUser.email || '',
-          firstName: profile.first_name || '',
-          lastName: profile.last_name || '',
-          role: profile.role as UserRole,
-          isActive: profile.is_active,
-          emailVerified: !!authUser.email_confirmed_at,
-          lastSignInAt: authUser.last_sign_in_at || null,
-          createdAt: authUser.created_at || '',
-          updatedAt: profile.updated_at,
-        })
-      } else {
-        console.log(`  ❌ Aucun auth trouvé pour ${profile.id}`)
-      }
-    }
-
     const totalPages = Math.ceil((count || 0) / filters.limit)
 
-    console.log(`✅ [getUsers] ${users.length} utilisateurs récupérés avec succès`)
-
-    await logActivity('VIEW_USERS', 'users', undefined, { filters })
+    await logActivity('VIEW_USERS', 'users', undefined, { 
+      filters: { ...filters, total: count } 
+    })
 
     return {
       success: true,
@@ -164,7 +79,7 @@ export async function getUsers(searchParams: URLSearchParams): Promise<AdminActi
       },
     }
   } catch (error) {
-    console.error('❌ [getUsers] Erreur lors de la récupération des utilisateurs:', error)
+    console.error('[ADMIN] Erreur lors de la récupération des utilisateurs:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Une erreur est survenue',
@@ -172,88 +87,45 @@ export async function getUsers(searchParams: URLSearchParams): Promise<AdminActi
   }
 }
 
+/**
+ * Récupère un utilisateur spécifique
+ */
 export async function getUser(userId: string): Promise<AdminActionResult<AdminUser>> {
   try {
-    console.log(`🔍 [getUser] Récupération de l'utilisateur ${userId}`)
-    
-    // Vérifier les permissions admin
     await requireAdmin([Permission.VIEW_USERS])
-    console.log('✅ [getUser] Permissions admin validées')
+
+    if (!userId) {
+      throw new Error('ID utilisateur manquant')
+    }
 
     const supabase = await createClient()
 
-    // Vérifier qu'on a la clé service role
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.log('❌ [getUser] Service role key manquante')
-      return {
-        success: false,
-        error: 'Configuration manquante: SUPABASE_SERVICE_ROLE_KEY nécessaire',
-      }
-    }
-
-    // Client Supabase avec service_role
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    )
-
-    // Récupérer l'utilisateur auth avec ses métadonnées
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId)
-    
-    if (authError || !authUser.user) {
-      console.log(`❌ [getUser] Utilisateur auth non trouvé: ${authError?.message}`)
-      return {
-        success: false,
-        error: 'Utilisateur non trouvé',
-      }
-    }
-
-    // Récupérer le profil utilisateur
+    // Récupérer le profil
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .single()
 
-    if (profileError) {
-      console.log(`❌ [getUser] Erreur lors de la récupération du profil: ${profileError.message}`)
-      return {
-        success: false,
-        error: 'Erreur lors de la récupération du profil utilisateur',
-      }
+    if (profileError || !profile) {
+      throw new Error('Utilisateur non trouvé')
     }
 
-    // Formater les données utilisateur
-    const user: AdminUser = {
-      id: authUser.user.id,
-      email: authUser.user.email!,
-      firstName: profile?.first_name || '',
-      lastName: profile?.last_name || '',
-      role: (profile?.role as UserRole) || UserRole.USER,
-      isActive: profile?.is_active ?? true,
-      emailVerified: authUser.user.email_confirmed_at !== null,
-      createdAt: authUser.user.created_at!,
-      lastSignInAt: authUser.user.last_sign_in_at || null,
-      updatedAt: profile?.updated_at || authUser.user.updated_at!,
+    // Enrichir avec les données auth
+    const users = await enrichWithAuthData([profile])
+    
+    if (users.length === 0) {
+      throw new Error('Données d\'authentification non trouvées')
     }
-
-    console.log(`✅ [getUser] Utilisateur ${userId} récupéré avec succès`)
 
     await logActivity('VIEW_USER', 'users', userId)
 
     return {
       success: true,
-      data: user,
+      data: users[0],
     }
   } catch (error) {
-    console.error(`❌ [getUser] Erreur lors de la récupération de l'utilisateur ${userId}:`, error)
+    console.error(`[ADMIN] Erreur lors de la récupération de l'utilisateur ${userId}:`, error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Une erreur est survenue',
@@ -261,87 +133,61 @@ export async function getUser(userId: string): Promise<AdminActionResult<AdminUs
   }
 }
 
+/**
+ * Crée un nouvel utilisateur
+ */
 export async function createUser(
   prevState: AdminActionResult | null,
   formData: FormData
 ): Promise<AdminActionResult> {
   try {
-    // Vérifier les permissions admin
     await requireAdmin([Permission.CREATE_USERS])
 
-    // Valider les données
-    const validatedFields = CreateUserSchema.safeParse({
+    // Validation des données
+    const rawData = {
       email: formData.get('email'),
       password: formData.get('password'),
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),
       role: formData.get('role'),
       isActive: formData.get('isActive') === 'on' || formData.get('isActive') === 'true',
-    })
-
-    if (!validatedFields.success) {
-      return {
-        success: false,
-        errors: validatedFields.error.flatten().fieldErrors,
-      }
     }
 
-    const { email, password, firstName, lastName, role, isActive } = validatedFields.data
+    const validatedData = CreateUserSchema.parse(rawData)
 
-    // Vérifier que nous avons la clé service role configurée
+    // Vérifier la configuration
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return {
-        success: false,
-        error: 'La création d\'utilisateur nécessite la configuration de SUPABASE_SERVICE_ROLE_KEY dans les variables d\'environnement.',
-      }
+      throw new Error('Configuration manquante: SUPABASE_SERVICE_ROLE_KEY nécessaire')
     }
 
-    // Récupérer les cookies pour les transmettre à l'API
-    const { cookies } = await import('next/headers')
-    const cookieStore = await cookies()
-    const cookieHeader = cookieStore.toString()
+    // Création via API admin
+    const result = await createUserWithAdmin(validatedData)
 
-    // Appeler l'API route pour créer l'utilisateur
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': cookieHeader, // Transmettre les cookies
-      },
-      body: JSON.stringify({
-        email,
-        password,
-        firstName,
-        lastName,
-        role,
-        isActive,
-      }),
-    })
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: result.error || 'Erreur lors de la création de l\'utilisateur',
-      }
-    }
-
-    await logActivity('CREATE_USER', 'users', result.data?.userId, {
-      email,
-      firstName,
-      lastName,
-      role,
+    await logActivity('CREATE_USER', 'users', result.userId, {
+      email: validatedData.email,
+      firstName: validatedData.firstName,
+      lastName: validatedData.lastName,
+      role: validatedData.role,
     })
 
     revalidatePath('/admin/users')
 
     return {
       success: true,
-      data: { message: result.data?.message || 'Utilisateur créé avec succès' },
+      data: { message: 'Utilisateur créé avec succès', userId: result.userId },
     }
   } catch (error) {
-    console.error('Erreur lors de la création de l\'utilisateur:', error)
+    console.error('[ADMIN] Erreur lors de la création de l\'utilisateur:', error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes('email')) {
+        return {
+          success: false,
+          errors: { email: ['Cet email est déjà utilisé'] }
+        }
+      }
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la création',
@@ -349,109 +195,35 @@ export async function createUser(
   }
 }
 
+/**
+ * Met à jour un utilisateur
+ */
 export async function updateUser(
   userId: string,
   prevState: AdminActionResult | null,
   formData: FormData
 ): Promise<AdminActionResult> {
   try {
-    // Vérifier les permissions admin
     await requireAdmin([Permission.UPDATE_USERS])
 
-    // Valider les données
-    const validatedFields = UpdateUserSchema.safeParse({
+    const rawData = {
       email: formData.get('email'),
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),
       role: formData.get('role'),
       isActive: formData.get('isActive') === 'true',
-    })
-
-    if (!validatedFields.success) {
-      return {
-        success: false,
-        errors: validatedFields.error.flatten().fieldErrors,
-      }
     }
 
-    const { email, firstName, lastName, role, isActive } = validatedFields.data
+    const validatedData = UpdateUserSchema.parse(rawData)
 
-    // Vérifier que nous avons la clé service role configurée
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return {
-        success: false,
-        error: 'La mise à jour d\'utilisateur nécessite la configuration de SUPABASE_SERVICE_ROLE_KEY dans les variables d\'environnement.',
-      }
-    }
+    // Vérifier l'existence
+    await verifyUserExists(userId)
 
-    const supabase = await createClient()
-
-    // Client Supabase avec service_role pour les opérations admin
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
-    // Mettre à jour l'email dans auth si fourni
-    if (email) {
-      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        email,
-      })
-
-      if (authError) {
-        throw new Error(`Erreur lors de la mise à jour de l'email: ${authError.message}`)
-      }
-    }
-
-    // Mettre à jour le statut actif dans auth si fourni
-    if (isActive !== undefined) {
-      if (!isActive) {
-        // Si l'utilisateur est désactivé, on le suspend
-        const { error: authStatusError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-          user_metadata: { ...{}, is_active: false }
-        })
-
-        if (authStatusError) {
-          throw new Error(`Erreur lors de la mise à jour du statut: ${authStatusError.message}`)
-        }
-      } else {
-        // Si l'utilisateur est réactivé, on met à jour ses métadonnées
-        const { error: authStatusError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-          user_metadata: { ...{}, is_active: true }
-        })
-
-        if (authStatusError) {
-          throw new Error(`Erreur lors de la mise à jour du statut: ${authStatusError.message}`)
-        }
-      }
-    }
-
-    // Mettre à jour le profil utilisateur
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {}
-    if (firstName !== undefined) updateData.first_name = firstName
-    if (lastName !== undefined) updateData.last_name = lastName
-    if (role !== undefined) updateData.role = role
-    if (isActive !== undefined) updateData.is_active = isActive
-
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .update(updateData)
-      .eq('id', userId)
-
-    if (profileError) {
-      throw new Error(`Erreur lors de la mise à jour du profil: ${profileError.message}`)
-    }
+    // Mise à jour
+    await updateUserData(userId, validatedData)
 
     await logActivity('UPDATE_USER', 'users', userId, {
-      updatedFields: Object.keys(updateData),
+      updatedFields: Object.keys(validatedData).filter(key => validatedData[key as keyof typeof validatedData] !== undefined)
     })
 
     revalidatePath('/admin/users')
@@ -461,22 +233,33 @@ export async function updateUser(
       data: { message: 'Utilisateur mis à jour avec succès' },
     }
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de l\'utilisateur:', error)
+    console.error('[ADMIN] Erreur lors de la mise à jour:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la mise à jour',
+      error: error instanceof Error ? error.message : 'Une erreur est survenue',
     }
   }
 }
 
+/**
+ * Supprime un utilisateur
+ */
 export async function deleteUser(userId: string): Promise<AdminActionResult> {
   try {
-    // Vérifier les permissions admin
-    await requireAdmin([Permission.DELETE_USERS])
+    const currentUser = await requireAdmin([Permission.DELETE_USERS])
+
+    if (!userId) {
+      throw new Error('ID utilisateur manquant')
+    }
+
+    // Protection: empêcher l'auto-suppression
+    if (currentUser.id === userId) {
+      throw new Error('Impossible de supprimer votre propre compte')
+    }
 
     const supabase = await createClient()
 
-    // Vérifier que l'utilisateur existe
+    // Récupérer les infos avant suppression
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('*')
@@ -484,24 +267,18 @@ export async function deleteUser(userId: string): Promise<AdminActionResult> {
       .single()
 
     if (!profile) {
-      return {
-        success: false,
-        error: 'Utilisateur non trouvé',
-      }
+      throw new Error('Utilisateur non trouvé')
     }
 
-    // Supprimer l'utilisateur (auth + profil via CASCADE)
-    const { error } = await supabase.auth.admin.deleteUser(userId)
-
-    if (error) {
-      throw new Error(`Erreur lors de la suppression: ${error.message}`)
-    }
+    // Suppression avec client admin
+    await deleteUserWithAdmin(userId)
 
     await logActivity('DELETE_USER', 'users', userId, {
       deletedUser: {
         email: profile.first_name + ' ' + profile.last_name,
         role: profile.role,
       },
+      deletedBy: currentUser.id
     })
 
     revalidatePath('/admin/users')
@@ -511,68 +288,231 @@ export async function deleteUser(userId: string): Promise<AdminActionResult> {
       data: { message: 'Utilisateur supprimé avec succès' },
     }
   } catch (error) {
-    console.error('Erreur lors de la suppression de l\'utilisateur:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression',
-    }
-  }
-}
-
-export async function toggleUserStatus(userId: string): Promise<AdminActionResult> {
-  try {
-    // Vérifier les permissions admin
-    await requireAdmin([Permission.UPDATE_USERS])
-
-    const supabase = await createClient()
-
-    // Récupérer le statut actuel
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('is_active')
-      .eq('id', userId)
-      .single()
-
-    if (!profile) {
-      return {
-        success: false,
-        error: 'Utilisateur non trouvé',
-      }
-    }
-
-    const newStatus = !profile.is_active
-
-    // Mettre à jour le statut
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ is_active: newStatus })
-      .eq('id', userId)
-
-    if (error) {
-      throw new Error(`Erreur lors de la mise à jour du statut: ${error.message}`)
-    }
-
-    await logActivity(
-      newStatus ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
-      'users',
-      userId,
-      { newStatus }
-    )
-
-    revalidatePath('/admin/users')
-
-    return {
-      success: true,
-      data: { 
-        message: `Utilisateur ${newStatus ? 'activé' : 'désactivé'} avec succès`,
-        isActive: newStatus,
-      },
-    }
-  } catch (error) {
-    console.error('Erreur lors du changement de statut:', error)
+    console.error('[ADMIN] Erreur lors de la suppression:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Une erreur est survenue',
     }
   }
-} 
+}
+
+// Fonctions utilitaires
+function parseUserFilters(searchParams: URLSearchParams): UserFiltersData {
+  const params: Record<string, any> = {}
+  
+  for (const [key, value] of searchParams.entries()) {
+    // Skip "all" values as they mean no filter
+    if (value === 'all' || value === '') {
+      continue
+    }
+    
+    if (value === 'true' || value === 'false') {
+      params[key] = value === 'true'
+    } else if (!isNaN(Number(value)) && value !== '') {
+      params[key] = Number(value)
+    } else if (value !== '') {
+      params[key] = value
+    }
+  }
+
+  return UserFiltersSchema.parse(params)
+}
+
+function applyUserFilters(query: any, filters: UserFiltersData) {
+  if (filters.search) {
+    const searchTerm = `%${filters.search.toLowerCase()}%`
+    query = query.or(
+      `first_name.ilike.${searchTerm},last_name.ilike.${searchTerm}`
+    )
+  }
+
+  if (filters.role) {
+    query = query.eq('role', filters.role)
+  }
+
+  if (filters.isActive !== undefined) {
+    query = query.eq('is_active', filters.isActive)
+  }
+
+  if (filters.createdAfter) {
+    query = query.gte('created_at', filters.createdAfter)
+  }
+
+  if (filters.createdBefore) {
+    query = query.lte('created_at', filters.createdBefore)
+  }
+
+  return query
+}
+
+async function enrichWithAuthData(profiles: any[]): Promise<AdminUser[]> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY manquante')
+  }
+
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+
+  const users: AdminUser[] = []
+  
+  // Traitement en batch
+  for (const profile of profiles) {
+    try {
+      const { data: { user: authUser }, error } = 
+        await supabaseAdmin.auth.admin.getUserById(profile.id)
+      
+      if (error || !authUser) {
+        console.warn(`[ADMIN] Auth non trouvé pour ${profile.id}`)
+        continue
+      }
+      
+      users.push({
+        id: profile.id,
+        email: authUser.email || '',
+        firstName: profile.first_name || '',
+        lastName: profile.last_name || '',
+        role: profile.role as UserRole,
+        isActive: profile.is_active,
+        emailVerified: !!authUser.email_confirmed_at,
+        lastSignInAt: authUser.last_sign_in_at || null,
+        createdAt: authUser.created_at || '',
+        updatedAt: profile.updated_at,
+      })
+    } catch (error) {
+      console.error(`[ADMIN] Erreur pour le profil ${profile.id}:`, error)
+    }
+  }
+
+  return users
+}
+
+async function createUserWithAdmin(userData: any) {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+
+  const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Cookie': cookieStore.toString(),
+    },
+    body: JSON.stringify(userData),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Erreur lors de la création')
+  }
+
+  const result = await response.json()
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Échec de la création')
+  }
+
+  return result.data
+}
+
+async function verifyUserExists(userId: string): Promise<void> {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('id', userId)
+    .single()
+  
+  if (error || !data) {
+    throw new Error('Utilisateur non trouvé')
+  }
+}
+
+async function updateUserData(userId: string, data: any): Promise<void> {
+  const supabase = await createClient()
+  
+  // Mise à jour auth si nécessaire
+  if (data.email || data.isActive !== undefined) {
+    await updateAuthData(userId, data)
+  }
+  
+  // Mise à jour profil
+  const updateData: any = {}
+  if (data.firstName !== undefined) updateData.first_name = data.firstName
+  if (data.lastName !== undefined) updateData.last_name = data.lastName
+  if (data.role !== undefined) updateData.role = data.role
+  if (data.isActive !== undefined) updateData.is_active = data.isActive
+
+  if (Object.keys(updateData).length > 0) {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update(updateData)
+      .eq('id', userId)
+
+    if (error) {
+      throw new Error(`Erreur lors de la mise à jour du profil: ${error.message}`)
+    }
+  }
+}
+
+async function updateAuthData(userId: string, data: any): Promise<void> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY manquante')
+  }
+
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+
+  const updatePayload: any = {}
+  
+  if (data.email) {
+    updatePayload.email = data.email
+  }
+  
+  if (data.isActive !== undefined) {
+    updatePayload.user_metadata = { is_active: data.isActive }
+  }
+
+  if (Object.keys(updatePayload).length > 0) {
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, updatePayload)
+
+    if (error) {
+      throw new Error(`Erreur lors de la mise à jour auth: ${error.message}`)
+    }
+  }
+}
+
+async function deleteUserWithAdmin(userId: string): Promise<void> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY manquante')
+  }
+
+  const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+  const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+  if (error) {
+    throw new Error(`Erreur lors de la suppression: ${error.message}`)
+  }
+}

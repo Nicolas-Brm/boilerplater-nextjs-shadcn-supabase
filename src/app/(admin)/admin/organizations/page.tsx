@@ -1,27 +1,25 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { UserPlus, Search } from 'lucide-react'
-import { getUsers } from '@/features/admin/actions/users'
-import { UsersTable, UsersTableSkeleton } from '@/features/admin/components/users-table'
-import { UserRole } from '@/features/admin/types/core'
+import { Building2, Search } from 'lucide-react'
+import { getOrganizations } from '@/features/admin/actions/organizations'
+import { OrganizationsTable, OrganizationsTableSkeleton } from '@/features/admin/components/organizations-table'
 
-interface UsersPageProps {
+interface OrganizationsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-async function UsersContent({ searchParams }: { searchParams: URLSearchParams }) {
-  const usersResult = await getUsers(searchParams)
+async function OrganizationsContent({ searchParams }: { searchParams: URLSearchParams }) {
+  const orgsResult = await getOrganizations(searchParams)
 
-  if (!usersResult.success) {
+  if (!orgsResult.success) {
     return (
       <Card>
         <CardContent className="pt-6">
           <p className="text-destructive">
-            Erreur: {usersResult.error}
+            Erreur: {orgsResult.error}
           </p>
         </CardContent>
       </Card>
@@ -32,24 +30,24 @@ async function UsersContent({ searchParams }: { searchParams: URLSearchParams })
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {usersResult.data!.pagination.total} utilisateur{usersResult.data!.pagination.total > 1 ? 's' : ''} trouvé{usersResult.data!.pagination.total > 1 ? 's' : ''}
+          {orgsResult.data!.pagination.total} organisation{orgsResult.data!.pagination.total > 1 ? 's' : ''} trouvée{orgsResult.data!.pagination.total > 1 ? 's' : ''}
         </p>
         
-        {usersResult.data!.pagination.totalPages > 1 && (
+        {orgsResult.data!.pagination.totalPages > 1 && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              Page {usersResult.data!.pagination.page} sur {usersResult.data!.pagination.totalPages}
+              Page {orgsResult.data!.pagination.page} sur {orgsResult.data!.pagination.totalPages}
             </span>
           </div>
         )}
       </div>
       
-      <UsersTable users={usersResult.data!.users} />
+      <OrganizationsTable organizations={orgsResult.data!.organizations} />
     </div>
   )
 }
 
-export default async function UsersPage({ searchParams }: UsersPageProps) {
+export default async function OrganizationsPage({ searchParams }: OrganizationsPageProps) {
   const resolvedSearchParams = await searchParams
   const urlSearchParams = new URLSearchParams()
   
@@ -63,19 +61,17 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     <div className="space-y-6">
       {/* En-tête */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Gestion des utilisateurs</h1>
-          <p className="text-muted-foreground">
-            Créer, modifier et gérer les comptes utilisateurs
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Gestion des organisations</h1>
+            <p className="text-muted-foreground">
+              Superviser les organisations et leurs activités
+            </p>
+          </div>
         </div>
-        
-        <Button asChild>
-          <Link href="/admin/users/new">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Créer un utilisateur
-          </Link>
-        </Button>
       </div>
 
       {/* Filtres */}
@@ -87,34 +83,34 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   name="search"
-                  placeholder="Rechercher par nom ou email..."
+                  placeholder="Rechercher par nom ou description..."
                   defaultValue={urlSearchParams.get('search') || ''}
                   className="pl-9"
                 />
               </div>
             </div>
             
-            <Select name="role" defaultValue={urlSearchParams.get('role') || 'all'}>
+            <Select name="planType" defaultValue={urlSearchParams.get('planType') || 'all'}>
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Tous les rôles" />
+                <SelectValue placeholder="Tous les plans" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les rôles</SelectItem>
-                <SelectItem value={UserRole.USER}>Utilisateur</SelectItem>
-                <SelectItem value={UserRole.MODERATOR}>Modérateur</SelectItem>
-                <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
+                <SelectItem value="all">Tous les plans</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="enterprise">Enterprise</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select name="isActive" defaultValue={urlSearchParams.get('isActive') || 'all'}>
+            <Select name="subscriptionStatus" defaultValue={urlSearchParams.get('subscriptionStatus') || 'all'}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="true">Actifs</SelectItem>
-                <SelectItem value="false">Inactifs</SelectItem>
+                <SelectItem value="active">Actives</SelectItem>
+                <SelectItem value="inactive">Inactives</SelectItem>
+                <SelectItem value="suspended">Suspendues</SelectItem>
               </SelectContent>
             </Select>
 
@@ -125,9 +121,9 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         </CardContent>
       </Card>
 
-      {/* Liste des utilisateurs */}
-      <Suspense fallback={<UsersTableSkeleton />}>
-        <UsersContent searchParams={urlSearchParams} />
+      {/* Liste des organisations */}
+      <Suspense fallback={<OrganizationsTableSkeleton />}>
+        <OrganizationsContent searchParams={urlSearchParams} />
       </Suspense>
     </div>
   )

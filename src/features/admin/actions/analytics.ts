@@ -63,18 +63,37 @@ export async function getAdminStats(): Promise<AdminActionResult<AdminStats>> {
       .select('id', { count: 'exact' })
       .gte('created_at', startOfMonth.toISOString())
 
-    // Simulations pour l'exemple (à remplacer par de vraies métriques)
+    // Récupérer les vraies statistiques depuis les tables existantes
+    const { count: totalUsersCount } = await supabase
+      .from('user_profiles')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: activeUsersCount } = await supabase
+      .from('user_profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+
+    const { count: newUsersCount } = await supabase
+      .from('user_profiles')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', startOfMonth.toISOString())
+
+    // Statistiques d'organisations
+    const { count: totalOrganizations } = await supabase
+      .from('organizations')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: activeOrganizations } = await supabase
+      .from('organizations')
+      .select('*', { count: 'exact', head: true })
+      .eq('subscription_status', 'active')
+
     const stats: AdminStats = {
-      totalUsers: totalUsersData?.length || 0,
-      activeUsers: activeUsersData?.length || 0,
-      newUsersThisMonth: newUsersData?.length || 0,
-      totalContent: 0, // À implémenter selon votre contenu
-      pendingModeration: 0, // À implémenter selon votre système de modération
-      systemLoad: {
-        cpu: Math.floor(Math.random() * 100),
-        memory: Math.floor(Math.random() * 100),
-        storage: Math.floor(Math.random() * 100),
-      },
+      totalUsers: totalUsersCount || 0,
+      activeUsers: activeUsersCount || 0,
+      newUsersThisMonth: newUsersCount || 0,
+      totalOrganizations: totalOrganizations || 0,
+      activeOrganizations: activeOrganizations || 0,
     }
 
     await logActivity('VIEW_ANALYTICS', 'system')

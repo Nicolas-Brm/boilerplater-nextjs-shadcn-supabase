@@ -40,9 +40,19 @@ export function OrganizationSwitcher() {
       switchOrganization(selectedOrg)
       setOpen(false)
       
-      // Si on est sur une page spécifique à l'organisation, on reste dessus
-      // Sinon on redirige vers la page organisations
-
+      // Navigation intelligente selon le contexte
+      if (pathname.startsWith('/admin')) {
+        // Si on est dans l'admin, rester dans l'admin
+        return
+      }
+      
+      // Si on est sur une page spécifique à l'organisation, mettre à jour l'URL
+      if (pathname.includes('/organizations/')) {
+        router.push(`/dashboard/organizations/${selectedOrg.slug}`)
+      } else {
+        // Rester sur la page actuelle avec le nouveau contexte
+        router.refresh()
+      }
     }
   }
 
@@ -136,7 +146,9 @@ export function OrganizationSwitcher() {
                           </span>
                           <div className="flex items-center gap-1">
                             <Badge variant="outline" className="text-xs px-1 py-0">
-                              {membership.role === 'owner' ? 'Propriétaire' : membership.role}
+                              {membership.role === 'owner' ? 'Propriétaire' : 
+                               membership.role === 'admin' ? 'Admin' :
+                               membership.role === 'manager' ? 'Manager' : 'Membre'}
                             </Badge>
                             <Badge variant="secondary" className="text-xs px-1 py-0">
                               {organization.planType}

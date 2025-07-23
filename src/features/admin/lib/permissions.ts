@@ -1,7 +1,6 @@
 import { UserRole, Permission, ROLE_PERMISSIONS, type AdminUser } from '../types'
-import { requireAuth, requireAuthAPI, getCurrentUser } from '@/lib/auth'
+import { requireAuthAPI, getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
 
@@ -223,8 +222,6 @@ export async function requireAdmin(
   if (!adminUser) {
     // Rediriger vers la page de connexion si pas d'utilisateur
     redirect('/login')
-    // Cette ligne ne sera jamais atteinte car redirect() ne retourne jamais
-    throw new Error('Redirection failed')
   }
 
   // Vérifier si l'utilisateur a un rôle admin
@@ -306,41 +303,83 @@ export async function requireAdminAPI(
 }
 
 /**
- * Enregistre une activité dans les logs d'audit
+ * Enregistre une activité dans les logs d'audit de manière sécurisée
  */
 export async function logActivity(
   action: string,
   resource: string,
   resourceId?: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>,
   request?: Request
-) {
+): Promise<boolean> {
   try {
-    const user = await requireAuth()
+    const user = await getCurrentUser()
+    if (!user) {
+      console.warn('[AUDIT] Tentative de log sans utilisateur authentifié')
+      return false
+    }
+
     const supabase = await createClient()
 
     // Extraire les informations de la requête si disponible
-    const ipAddress = request?.headers.get('x-forwarded-for') || 
-                      request?.headers.get('x-real-ip') || 
-                      '127.0.0.1'
+    const ipAddress = extractClientIP(request)
     const userAgent = request?.headers.get('user-agent') || 'Unknown'
 
-    await supabase
+    const { error } = await supabase
       .from('activity_logs')
       .insert({
         user_id: user.id,
         action,
         resource,
         resource_id: resourceId,
-        metadata: metadata || {},
+        metadata: sanitizeMetadata(metadata),
         ip_address: ipAddress,
         user_agent: userAgent,
       })
+
+    if (error) {
+      console.error('[AUDIT] Erreur lors de l\'insertion du log:', error)
+      return false
+    }
+
+    return true
   } catch (error) {
-    // Log l'erreur mais ne pas faire échouer l'action principale
-    console.error('Erreur lors de l\'enregistrement de l\'activité:', error)
+    console.error('[AUDIT] Erreur lors de l\'enregistrement de l\'activité:', error)
+    return false
   }
+}
+
+/**
+ * Extrait l'adresse IP du client de manière sécurisée
+ */
+function extractClientIP(request?: Request): string {
+  if (!request) return '127.0.0.1'
+  
+  // Vérifier les en-têtes dans l'ordre de priorité
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    // Prendre seulement la première IP (client original)
+    return forwardedFor.split(',')[0].trim()
+  }
+  
+  return request.headers.get('x-real-ip') || '127.0.0.1'
+}
+
+/**
+ * Nettoie les métadonnées pour éviter les fuites de données sensibles
+ */
+function sanitizeMetadata(metadata?: Record<string, any>): Record<string, any> {
+  if (!metadata) return {}
+  
+  const sanitized = { ...metadata }
+  
+  // Supprimer les champs sensibles
+  const sensitiveFields = ['password', 'token', 'secret', 'key', 'auth']
+  sensitiveFields.forEach(field => {
+    delete sanitized[field]
+  })
+  
+  return sanitized
 }
 
 /**
